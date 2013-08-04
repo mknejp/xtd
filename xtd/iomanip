@@ -38,14 +38,14 @@ namespace detail
 	template<class T, class CharT, class Traits, class Size>
 	std::basic_istream<CharT, Traits>& operator>> (std::basic_istream<CharT, Traits>& in, UnformattedBinaryStreamManipulator<T, Size> brm)
 	{
-		static_assert(sizeof(CharT) == 1, "xtd::operator>>: Unformatted input is only supported for streams with single-byte elements.")
+		static_assert(sizeof(CharT) == 1, "xtd::operator>>: Unformatted input is only supported for streams with single-byte elements.");
 		return in.read(reinterpret_cast<CharT*>(brm.target), (std::is_void<T>::value ? 1 : sizeof(*brm.target)) * brm.count);
 	}
 	
 	template<class T, class CharT, class Traits, class Size>
 	std::basic_ostream<CharT, Traits>& operator<< (std::basic_ostream<CharT, Traits>& out, UnformattedBinaryStreamManipulator<T, Size> brm)
 	{
-		static_assert(sizeof(CharT) == 1, "xtd::operator<<: Unformatted output is only supported for streams with single-byte elements.")
+		static_assert(sizeof(CharT) == 1, "xtd::operator<<: Unformatted output is only supported for streams with single-byte elements.");
 		return out.write(reinterpret_cast<CharT*>(brm.target), (std::is_void<T>::value ? 1 : sizeof(*brm.target)) * brm.count);
 	}
 	
