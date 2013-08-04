@@ -1,0 +1,47 @@
+/*
+ Copyright 2013 Miro Knejp
+ 
+ See the accompanied LICENSE file for licensing details.
+ */
+
+/**
+ \file
+ Adds new features or extensions to the <utility> standard header.
+ 
+ \author Miro Knejp
+ */
+
+#ifndef XTD_xtd_utility_88d8df0c_856d_4550_87b6_d6029ae326bc
+#define XTD_xtd_utility_88d8df0c_856d_4550_87b6_d6029ae326bc
+
+#include <utility>
+
+////////////////////////////////////////////////////////////////////////
+// begin() and end() for pair<>
+//
+
+/*
+ This is technically not portable as it is not supported
+ to add new members to the \c std namespace, but it's the only
+ way to make these work.
+ */
+namespace std
+{
+
+/// Makes a pair<> of iterators work with range based for loop
+template<class T, class U>
+T begin(const pair<T, U>& p)
+{
+	return p.first;
+}
+
+/// Makes a pair<> of iterators work with range based for loop
+template<class T, class U>
+U end(const pair<T, U>& p)
+{
+	return p.second;
+}
+
+} // namespace std
+
+#endif // XTD_xtd_utility_88d8df0c_856d_4550_87b6_d6029ae326bc
