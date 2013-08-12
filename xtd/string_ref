@@ -1,0 +1,398 @@
+/*
+ Copyright 2013 Miro Knejp
+ 
+ See the accompanied LICENSE file for licensing details.
+ */
+
+/**
+ \file
+ Implementation of the string_ref proposal N3442.
+ 
+ http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3442.html
+ https://std-proposals-a-isocpp-org.googlegroups.com/attach/4e6b2bee935f06c6/string_ref.html?view=1&part=2
+ 
+ \author Miro Knejp
+ */
+
+#ifndef XTD_xtd_string_ref_44929f79_d6b5_452e_9c17_2f5e98fb7dfb
+#define XTD_xtd_string_ref_44929f79_d6b5_452e_9c17_2f5e98fb7dfb
+
+#include <algorithm>
+#include <cassert>
+#include <iosfwd>
+#include <iterator>
+#include <limits>
+#include <stdexcept>
+#include <string>
+
+namespace xtd
+{
+
+/// Implements the string_ref proposal N3442.
+template<class CharT, class Traits = std::char_traits<CharT>>
+class basic_string_ref
+{
+public:
+	/// \name Member types
+	//@{
+	
+	using traits_type = Traits;
+	using value_type = CharT;
+	using size_type = std::size_t;
+	using difference_type = std::ptrdiff_t;
+	using reference = CharT&;
+	using const_reference = const CharT&;
+	using pointer = CharT*;
+	using const_pointer = const CharT*;
+
+	using iterator = const CharT*; // basic_string_ref is non-modifying
+	using const_iterator = iterator;
+	using reverse_iterator = std::reverse_iterator<iterator>;
+	using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+	
+	constexpr static const size_type npos = -1;
+	
+	//@}
+	/// \name Construction & Assignment
+	//@{
+	
+	constexpr basic_string_ref() noexcept
+		: _data{nullptr}, _len{0}
+	{ }
+	basic_string_ref(const CharT* chars) noexcept(noexcept(Traits::length(chars)))
+		: _data{chars}, _len{chars ? Traits::length(chars) : 0}
+	{ }
+	constexpr basic_string_ref(const CharT* chars, size_type len) noexcept
+		: _data{chars}, _len{chars ? len : 0}
+	{ }
+	template<class Allocator>
+	basic_string_ref(const std::basic_string<CharT, Traits, Allocator>& str) noexcept
+		: _data{str.data()}, _len{str.size()}
+	{ }
+	constexpr basic_string_ref(std::initializer_list<CharT> chars) noexcept
+		: _data{chars.begin()}, _len{chars.size()}
+	{ }
+	
+	constexpr basic_string_ref(const basic_string_ref& s) : _data(s._data), _len(s._len)
+	{ }
+	constexpr basic_string_ref(basic_string_ref&& s) : _data(s._data), _len(s._len)
+	{ }
+	
+	basic_string_ref& operator = (const basic_string_ref& s) = default;
+	basic_string_ref& operator = (basic_string_ref&& s) = default;
+	
+	//@}
+	/// \name Iterators
+	//@{
+	
+	/// Returns an iterator to the beginning
+	constexpr const_iterator begin() const noexcept { return cbegin(); }
+	/// Returns an iterator to the end
+	constexpr const_iterator end() const noexcept { return cend(); }
+	/// Returns an iterator to the beginning
+	constexpr const_iterator cbegin() const noexcept { return data(); }
+	/// Returns an iterator to the end
+	constexpr const_iterator cend() const noexcept { return data() + size(); }
+	
+	/// Returns a reverse iterator to the beginning
+	const_reverse_iterator rbegin() const noexcept { return crbegin(); }
+	/// Returns a reverse iterator to the end
+	const_reverse_iterator rend() const noexcept { return crend(); }
+	/// Returns a reverse iterator to the beginning
+	const_reverse_iterator crbegin() const noexcept { return reverse_iterator{cend()}; }
+	/// Returns a reverse iterator to the end
+	const_reverse_iterator crend() const noexcept { return reverse_iterator{cbegin()}; }
+
+	//@}
+	/// \name Capacity
+	//@{
+	
+	/// Returns the number of characters
+	constexpr size_type size() const noexcept { return _len; }
+	/// Returns the number of characters
+	constexpr size_type length() const noexcept { return size(); }
+	/// Returns the maximum number of characters
+	constexpr size_type max_size() const noexcept { return std::numeric_limits<size_type>::max() / 2; }
+	/// Checks whether the string is empty
+	constexpr bool empty() const noexcept { return size() == 0; }
+
+	//@}
+	/// \name Element access
+	//@{
+
+	constexpr const CharT& operator[](size_type pos) const noexcept
+	{
+		return assertNonNull(), assertNonEmpty(), _data[pos];
+	}
+	constexpr const CharT& at(size_t pos) const
+	{
+		return assertNonNull(), checkPosition(pos), (*this)[pos];
+	}
+	constexpr const CharT& front() const noexcept
+	{
+		return (*this)[0];
+	}
+	constexpr const CharT& back() const noexcept
+	{
+		return (*this)[size() - 1];
+	}
+	constexpr const CharT* data() const noexcept
+	{
+		return _data;
+	}
+
+	//@}
+	/// \name Modifiers
+	//@{
+	
+	void clear() noexcept
+	{
+		*this = basic_string_ref{};
+	}
+	void remove_prefix(size_type n)
+	{
+		*this = substr(n, npos);
+	}
+	void remove_suffix(size_type n)
+	{
+		*this = n > size() ? basic_string_ref{} : substr(0, size() - n);
+	}
+
+	//@}
+	/// \name String Operations
+	//@{
+
+	constexpr basic_string_ref substr(size_type pos, size_type n = npos) const
+	{
+		return checkPosition(pos), basic_string_ref{offset(pos), tail(pos, n)};
+	}
+	int compare(basic_string_ref x) const
+	{
+		assertNonNull();
+		x.assertNonNull();
+		auto cmp = Traits::compare(data(), x.data(), std::min(size(), x.size()));
+		return cmp != 0 ? cmp : (size() < x.size() ? -1 : 1);
+	}
+	bool starts_with(basic_string_ref x) const
+	{
+		assertNonNull();
+		x.assertNonNull();
+		return size() >= x.size() && Traits::compare(data(), x.data(), x.size()) == 0;
+	}
+	constexpr bool starts_with(CharT ch) const
+	{
+		return size() > 0 && Traits::eq(ch, front());
+	}
+	bool ends_with(basic_string_ref x) const
+	{
+		assertNonNull();
+		x.assertNonNull();
+		return size() >= x.size() && Traits::compare(data() + size() - x.size(), x.data(), x.size()) == 0;
+	}
+	constexpr bool ends_with(CharT ch) const
+	{
+		return size() > 0 && Traits::eq(ch, back());
+	}
+	template<class Allocator>
+	explicit operator std::basic_string<CharT, Traits, Allocator> () const
+	{
+		using str = std::basic_string<CharT, Traits, Allocator>;
+		return _data ? str{_data, _len} : str{};
+	}
+	
+	//@}
+	/// \name Searching
+	//@{
+
+	size_type find(basic_string_ref s) const
+	{
+		assertNonNull();
+		return forwardIterOffset(std::search(begin(), end(), s.begin(), s.end(), Traits::eq));
+	}
+	size_type find(CharT ch) const
+	{
+		assertNonNull();
+		return forwardIterOffset(std::find_if(begin(), end(), [ch] (CharT x) { return Traits::eq(x, ch); }));
+	}
+	size_type rfind(basic_string_ref s) const
+	{
+		assertNonNull();
+		return forwardIterOffset(std::find_end(begin(), end(), s.begin(), s.end(), Traits::eq));
+	}
+	size_type rfind(CharT ch) const
+	{
+		assertNonNull();
+		return reverseIterOffset(std::find_if(rbegin(), rend(), [ch] (CharT x) { return Traits::eq(x, ch); }));
+	}
+	size_type find_first_of(basic_string_ref s) const
+	{
+		assertNonNull();
+		return forwardIterOffset(std::find_first_of(begin(), end(), s.begin(), s.end(), Traits::eq));
+	}
+	size_type find_first_of(CharT ch) const
+	{
+		return find(ch);
+	}
+	size_type find_last_of(basic_string_ref s) const
+	{
+		assertNonNull();
+		return reverseIterOffset(std::find_first_of(rbegin(), rend(), s.begin(), s.end(), Traits::eq));
+	}
+	size_type find_last_of(CharT ch) const
+	{
+		return rfind(ch);
+	}
+	size_type find_first_not_of(basic_string_ref s) const
+	{
+		assertNonNull();
+		return forwardIterOffset(findNotOf(begin(), end(), s));
+	}
+	size_type find_first_not_of(CharT ch) const
+	{
+		assertNonNull();
+		return forwardIterOffset(std::find_if_not(begin(), end(), [ch] (CharT x) { return Traits::eq(x, ch); }));
+	}
+	size_type find_last_not_of(basic_string_ref s) const
+	{
+		return reverseIterOffset(findNotOf(rbegin(), rend(), s));
+	}
+	size_type find_last_not_of(CharT ch) const
+	{
+		assertNonNull();
+		return reverseIterOffset(std::find_if_not(rbegin(), rend(), [ch] (CharT x) { return Traits::eq(ch, x); }));
+	}
+
+	//@}
+	
+private:
+	// Get the pointer _data + min(pos, size())
+	constexpr const CharT* offset(size_type pos) const noexcept
+	{
+		return _data + (pos >= size() ? size() : pos);
+	}
+	// Get the length of a substring starting at pos with size n
+	constexpr size_type tail(size_type pos, size_type n) const noexcept
+	{
+		return n == npos || n + pos > size() ? size() - pos : n;
+	}
+	constexpr bool assertNonNull() const noexcept
+	{
+		return assert(_data && "xtd::basic_string_ref points to NULL."), true;
+	}
+	constexpr bool assertNonEmpty() const noexcept
+	{
+		return assert(_len > 0 && "xtd::basic_string_ref has length zero."), true;
+	}
+	constexpr bool checkPosition(size_type pos) const
+	{
+		return pos >= size() ? throw std::out_of_range{"xtd::basic_string_ref pos out of range."} : true;
+	}
+	size_type forwardIterOffset(iterator it) const
+	{
+		return it == end() ? npos : std::distance(begin(), it);
+	}
+	size_type reverseIterOffset(reverse_iterator it) const
+	{
+		return it == rend() ? npos : size() - 1 - std::distance(rbegin(), it);
+	}
+	template<class Iter>
+	static Iter findNotOf(Iter first, Iter last, basic_string_ref s)
+	{
+		while(first++ != last)
+		{
+			if(Traits::find(s.data(), s.size(), *first) == nullptr)
+				return first;
+		}
+		return last;
+	}
+	
+	const CharT* _data;
+	size_type _len;
+};
+
+template<class CharT, class Traits>
+inline bool operator == (basic_string_ref<CharT, Traits> a, basic_string_ref<CharT, Traits> b)
+{
+	return a.compare(b) == 0;
+}
+
+template<class CharT, class Traits>
+inline bool operator != (basic_string_ref<CharT, Traits> a, basic_string_ref<CharT, Traits> b)
+{
+	return a.compare(b) != 0;
+}
+
+template<class CharT, class Traits>
+inline bool operator < (basic_string_ref<CharT, Traits> a, basic_string_ref<CharT, Traits> b)
+{
+	return a.compare(b) < 0;
+}
+
+template<class CharT, class Traits>
+inline bool operator > (basic_string_ref<CharT, Traits> a, basic_string_ref<CharT, Traits> b)
+{
+	return a.compare(b) > 0;
+}
+
+template<class CharT, class Traits>
+inline bool operator <= (basic_string_ref<CharT, Traits> a, basic_string_ref<CharT, Traits> b)
+{
+	return a.compare(b) <= 0;
+}
+
+template<class CharT, class Traits>
+inline bool operator >= (basic_string_ref<CharT, Traits> a, basic_string_ref<CharT, Traits> b)
+{
+	return a.compare(b) >= 0;
+}
+
+template<class CharT, class Traits>
+std::basic_ostream<CharT, Traits>& operator << (std::basic_ostream<CharT, Traits>& os, basic_string_ref<CharT, Traits> s)
+{
+	using Stream = std::basic_ostream<CharT, Traits>;
+	typename Stream::sentry ok{os};
+	if(ok)
+	{
+		try
+		{
+			auto width = os.width();
+			if(width > s.size())
+			{
+				auto adjustfield = os.flags() & Stream::adjustfield;
+				if(adjustfield == Stream::left)
+				{
+					os.rdbuf()->sputn(s.data(), s.size());
+					std::fill_n(std::ostreambuf_iterator<CharT>{os}, width - s.size(), os.fill());
+				}
+				else
+				{
+					std::fill_n(std::ostreambuf_iterator<CharT>{os}, width - s.size(), os.fill());
+					os.rdbuf()->sputn(s.data(), s.size());
+				}
+			}
+			else
+				os.rdbuf()->sputn(s.data(), s.size());
+			os.width(0);
+		}
+		catch(...)
+		{
+			os.setstate(Stream::badbit);
+			throw;
+		}
+	}
+	else
+		os.setstate(Stream::failbit);
+	return os;
+}
+
+template<class CharT, class Traits>
+const typename basic_string_ref<CharT, Traits>::size_type basic_string_ref<CharT, Traits>::npos;
+
+using string_ref = basic_string_ref<char>;
+using u16string_ref = basic_string_ref<char16_t>;
+using u32string_ref = basic_string_ref<char32_t>;
+using wstring_ref = basic_string_ref<wchar_t>;
+
+} // namespace xtd
+
+#endif // XTD_xtd_string_ref_44929f79_d6b5_452e_9c17_2f5e98fb7dfb
