@@ -25,3 +25,6 @@ CVS
 *.o.d
 *.apk
 *.so
+
+# Other
+/libs/

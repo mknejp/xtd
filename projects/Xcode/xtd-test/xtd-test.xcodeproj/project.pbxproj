@@ -1,0 +1,274 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		CF565B5417B90AD5000A4EDD /* memory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CF565B5317B90AD5000A4EDD /* memory.cpp */; };
+		CF565B5617B90CC1000A4EDD /* utility.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CF565B5517B90CC1000A4EDD /* utility.cpp */; };
+		CF565B5917B91519000A4EDD /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CF565B5817B91519000A4EDD /* main.cpp */; };
+		CF565B5B17B915A9000A4EDD /* iomanip.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CF565B5A17B915A9000A4EDD /* iomanip.cpp */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		CF565A9717B8F151000A4EDD /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		CF565A9917B8F151000A4EDD /* xtd-test */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "xtd-test"; sourceTree = BUILT_PRODUCTS_DIR; };
+		CF565AA617B8F182000A4EDD /* iomanip */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; path = iomanip; sourceTree = "<group>"; };
+		CF565AA717B8F182000A4EDD /* memory */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; path = memory; sourceTree = "<group>"; };
+		CF565AA817B8F182000A4EDD /* utility */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; path = utility; sourceTree = "<group>"; };
+		CF565B5317B90AD5000A4EDD /* memory.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = memory.cpp; sourceTree = "<group>"; };
+		CF565B5517B90CC1000A4EDD /* utility.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = utility.cpp; sourceTree = "<group>"; };
+		CF565B5817B91519000A4EDD /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		CF565B5A17B915A9000A4EDD /* iomanip.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = iomanip.cpp; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		CF565A9617B8F151000A4EDD /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		CF565A9017B8F151000A4EDD = {
+			isa = PBXGroup;
+			children = (
+				CF565B5117B90ABA000A4EDD /* test */,
+				CF565AA517B8F182000A4EDD /* xtd */,
+				CF565A9A17B8F151000A4EDD /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		CF565A9A17B8F151000A4EDD /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				CF565A9917B8F151000A4EDD /* xtd-test */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		CF565AA517B8F182000A4EDD /* xtd */ = {
+			isa = PBXGroup;
+			children = (
+				CF565AA617B8F182000A4EDD /* iomanip */,
+				CF565AA717B8F182000A4EDD /* memory */,
+				CF565AA817B8F182000A4EDD /* utility */,
+			);
+			name = xtd;
+			path = ../../../xtd;
+			sourceTree = "<group>";
+		};
+		CF565B5117B90ABA000A4EDD /* test */ = {
+			isa = PBXGroup;
+			children = (
+				CF565B5817B91519000A4EDD /* main.cpp */,
+				CF565B5217B90ABA000A4EDD /* xtd */,
+			);
+			name = test;
+			path = ../../../test;
+			sourceTree = "<group>";
+		};
+		CF565B5217B90ABA000A4EDD /* xtd */ = {
+			isa = PBXGroup;
+			children = (
+				CF565B5A17B915A9000A4EDD /* iomanip.cpp */,
+				CF565B5317B90AD5000A4EDD /* memory.cpp */,
+				CF565B5517B90CC1000A4EDD /* utility.cpp */,
+			);
+			path = xtd;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		CF565A9817B8F151000A4EDD /* xtd-test */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CF565AA217B8F151000A4EDD /* Build configuration list for PBXNativeTarget "xtd-test" */;
+			buildPhases = (
+				CF565A9517B8F151000A4EDD /* Sources */,
+				CF565A9617B8F151000A4EDD /* Frameworks */,
+				CF565A9717B8F151000A4EDD /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "xtd-test";
+			productName = "xtd-test";
+			productReference = CF565A9917B8F151000A4EDD /* xtd-test */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		CF565A9117B8F151000A4EDD /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0460;
+				ORGANIZATIONNAME = Miro Knejp;
+			};
+			buildConfigurationList = CF565A9417B8F151000A4EDD /* Build configuration list for PBXProject "xtd-test" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = CF565A9017B8F151000A4EDD;
+			productRefGroup = CF565A9A17B8F151000A4EDD /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				CF565A9817B8F151000A4EDD /* xtd-test */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		CF565A9517B8F151000A4EDD /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CF565B5417B90AD5000A4EDD /* memory.cpp in Sources */,
+				CF565B5617B90CC1000A4EDD /* utility.cpp in Sources */,
+				CF565B5917B91519000A4EDD /* main.cpp in Sources */,
+				CF565B5B17B915A9000A4EDD /* iomanip.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		CF565AA017B8F151000A4EDD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.7;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		CF565AA117B8F151000A4EDD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.7;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		CF565AA317B8F151000A4EDD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				HEADER_SEARCH_PATHS = (
+					../../../libs/include,
+					../../../,
+				);
+				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../../../libs/bin/Xcode/$(CONFIGURATION)\"";
+				OTHER_LDFLAGS = (
+					"-lboost",
+					"-lboost_test",
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		CF565AA417B8F151000A4EDD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				HEADER_SEARCH_PATHS = (
+					../../../libs/include,
+					../../../,
+				);
+				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../../../libs/bin/Xcode/$(CONFIGURATION)\"";
+				OTHER_LDFLAGS = (
+					"-lboost",
+					"-lboost_test",
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		CF565A9417B8F151000A4EDD /* Build configuration list for PBXProject "xtd-test" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CF565AA017B8F151000A4EDD /* Debug */,
+				CF565AA117B8F151000A4EDD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CF565AA217B8F151000A4EDD /* Build configuration list for PBXNativeTarget "xtd-test" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CF565AA317B8F151000A4EDD /* Debug */,
+				CF565AA417B8F151000A4EDD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = CF565A9117B8F151000A4EDD /* Project object */;
+}
