@@ -11,7 +11,7 @@
 		CF565B5617B90CC1000A4EDD /* utility.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CF565B5517B90CC1000A4EDD /* utility.cpp */; };
 		CF565B5917B91519000A4EDD /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CF565B5817B91519000A4EDD /* main.cpp */; };
 		CF565B5B17B915A9000A4EDD /* iomanip.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CF565B5A17B915A9000A4EDD /* iomanip.cpp */; };
-		CF565B5E17B91CAF000A4EDD /* string_ref.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CF565B5D17B91CAF000A4EDD /* string_ref.cpp */; };
+		CF565B5E17B91CAF000A4EDD /* string.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CF565B5D17B91CAF000A4EDD /* string.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -35,8 +35,8 @@
 		CF565B5517B90CC1000A4EDD /* utility.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = utility.cpp; sourceTree = "<group>"; };
 		CF565B5817B91519000A4EDD /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		CF565B5A17B915A9000A4EDD /* iomanip.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = iomanip.cpp; sourceTree = "<group>"; };
-		CF565B5C17B91C9F000A4EDD /* string_ref */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; path = string_ref; sourceTree = "<group>"; };
-		CF565B5D17B91CAF000A4EDD /* string_ref.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = string_ref.cpp; sourceTree = "<group>"; };
+		CF565B5C17B91C9F000A4EDD /* string */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; path = string; sourceTree = "<group>"; };
+		CF565B5D17B91CAF000A4EDD /* string.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = string.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -72,7 +72,7 @@
 			children = (
 				CF565AA617B8F182000A4EDD /* iomanip */,
 				CF565AA717B8F182000A4EDD /* memory */,
-				CF565B5C17B91C9F000A4EDD /* string_ref */,
+				CF565B5C17B91C9F000A4EDD /* string */,
 				CF565AA817B8F182000A4EDD /* utility */,
 			);
 			name = xtd;
@@ -94,7 +94,7 @@
 			children = (
 				CF565B5A17B915A9000A4EDD /* iomanip.cpp */,
 				CF565B5317B90AD5000A4EDD /* memory.cpp */,
-				CF565B5D17B91CAF000A4EDD /* string_ref.cpp */,
+				CF565B5D17B91CAF000A4EDD /* string.cpp */,
 				CF565B5517B90CC1000A4EDD /* utility.cpp */,
 			);
 			path = xtd;
@@ -155,7 +155,7 @@
 				CF565B5617B90CC1000A4EDD /* utility.cpp in Sources */,
 				CF565B5917B91519000A4EDD /* main.cpp in Sources */,
 				CF565B5B17B915A9000A4EDD /* iomanip.cpp in Sources */,
-				CF565B5E17B91CAF000A4EDD /* string_ref.cpp in Sources */,
+				CF565B5E17B91CAF000A4EDD /* string.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -273,6 +273,7 @@
 				CF565AA417B8F151000A4EDD /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
