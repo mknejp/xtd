@@ -26,7 +26,8 @@ namespace xtd
 // Unformatted Binary Stream Reading and Writing
 //
 
-namespace detail
+namespace detail {
+namespace iomanip
 {
 	template<class T, class Size>
 	struct UnformattedBinaryStreamManipulator
@@ -49,7 +50,7 @@ namespace detail
 		return out.write(reinterpret_cast<CharT*>(brm.target), (std::is_void<T>::value ? 1 : sizeof(*brm.target)) * brm.count);
 	}
 	
-} // namespace detail
+}} // namespace detail::iomanip
 
 /**
  A manipulator for std::basic_*stream to read/write an object as unformatted binary.
@@ -64,7 +65,7 @@ namespace detail
  */
 template<class T>
 auto unformatted(T& target)
-	-> detail::UnformattedBinaryStreamManipulator<T, std::size_t>
+	-> detail::iomanip::UnformattedBinaryStreamManipulator<T, std::size_t>
 {
 	static_assert(std::is_pod<T>::value, "xtd::unformatted: Only POD types can be read/written unformatted to/from a basic_*stream.");
 	return {&target, 1};
@@ -86,7 +87,7 @@ auto unformatted(T& target)
  */
 template<class T, class Size>
 auto unformatted(T* target, Size count)
-	-> detail::UnformattedBinaryStreamManipulator<T, Size>
+	-> detail::iomanip::UnformattedBinaryStreamManipulator<T, Size>
 {
 	static_assert(std::is_pod<T>::value, "xtd::unformatted: Only POD types can be read/written unformatted to/from a basic_*stream.");
 	return {target, count};
@@ -105,7 +106,7 @@ auto unformatted(T* target, Size count)
  */
 template<class T, std::size_t N>
 auto unformatted(T (&target)[N])
-	-> detail::UnformattedBinaryStreamManipulator<T, std::size_t>
+	-> detail::iomanip::UnformattedBinaryStreamManipulator<T, std::size_t>
 {
 	static_assert(std::is_pod<T>::value, "xtd::unformatted: Only POD types can be read/written unformatted to/from a basic_*stream.");
 	return {target, N};
@@ -124,7 +125,7 @@ auto unformatted(T (&target)[N])
  */
 template<class T, std::size_t N>
 auto unformatted(std::array<T, N>& arr)
-	-> detail::UnformattedBinaryStreamManipulator<T, std::size_t>
+	-> detail::iomanip::UnformattedBinaryStreamManipulator<T, std::size_t>
 {
 	static_assert(std::is_pod<T>::value, "xtd::unformatted: Only POD types can be read/written unformatted to/from a basic_*stream.");
 	return {arr.data(), arr.size()};
@@ -145,7 +146,7 @@ auto unformatted(std::array<T, N>& arr)
  */
 template<class T, class Allocator>
 auto unformatted(std::vector<T, Allocator>& v)
-	-> detail::UnformattedBinaryStreamManipulator<T, typename std::vector<T, Allocator>::size_type>
+	-> detail::iomanip::UnformattedBinaryStreamManipulator<T, typename std::vector<T, Allocator>::size_type>
 {
 	static_assert(std::is_pod<T>::value, "xtd::unformatted: Only POD types can be read/written unformatted to/from a basic_*stream.");
 	return {v.data(), v.size()};
@@ -166,7 +167,7 @@ auto unformatted(std::vector<T, Allocator>& v)
  */
 template<class T, class Allocator>
 auto unformatted(std::vector<T, Allocator>& v, typename std::vector<T, Allocator>::size_type size)
-	-> detail::UnformattedBinaryStreamManipulator<T, typename std::vector<T, Allocator>::size_type>
+	-> detail::iomanip::UnformattedBinaryStreamManipulator<T, typename std::vector<T, Allocator>::size_type>
 {
 	static_assert(std::is_pod<T>::value, "xtd::unformatted: Only POD types can be read/written unformatted to/from a basic_*stream.");
 	v.resize(size);
