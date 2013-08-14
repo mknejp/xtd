@@ -54,7 +54,7 @@ inline void doswap(T& a, T& b)
  
  An optional<T> is an object that contains the storage for another object of type T and manages the lifetime of this contained object. The contained object may be initialized after the optional object has been initialized, and may be destroyed before the optional object has been destroyed. The initialization state of the contained object is tracked by the optional object.
  
- An optional<T> is called \i disengaged if the stored value is not initialized. Whenever an optional<T> transitions form engaged to disengaged the stored object's destructor is invoked. When the optional<T> object is destroyed the stored object's destructor is only invoked with the optional<T> object is engaged.
+ An optional<T> is called \i disengaged if the stored value is not initialized. Whenever an optional<T> transitions form engaged to disengaged the stored object's destructor is invoked. When the optional<T> object is destroyed the stored object's destructor is only invoked if the optional<T> object is engaged.
  
  \tparam T The type of the stored object. Must be destructible and not a reference.
  */
