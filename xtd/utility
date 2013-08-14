@@ -20,24 +20,19 @@
 // begin() and end() for pair<>
 //
 
-/*
- This is technically not portable as it is not supported
- to add new members to the \c std namespace, but it's the only
- way to make these work.
- */
 namespace std
 {
 
 /// Makes a pair<> of iterators work with range based for loop
 template<class T, class U>
-T begin(const pair<T, U>& p)
+constexpr T begin(const pair<T, U>& p)
 {
 	return p.first;
 }
 
 /// Makes a pair<> of iterators work with range based for loop
 template<class T, class U>
-U end(const pair<T, U>& p)
+constexpr U end(const pair<T, U>& p)
 {
 	return p.second;
 }
