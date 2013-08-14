@@ -62,6 +62,7 @@ template<class T>
 class optional
 {
 	static_assert(!std::is_reference<T>::value, "xtd::optional cannot store references.");
+	static_assert(std::is_destructible<T>::value, "xtd::optional can only store destructible values.");
 	
 public:
 	/// \name Construction & Assignment
