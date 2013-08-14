@@ -1,0 +1,330 @@
+/*
+ Copyright 2013 Miro Knejp
+ 
+ See the accompanied LICENSE file for licensing details.
+ */
+
+/**
+ \file
+ Partial implementation of the optional proposal N3527 for C++14.
+ http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3527.html
+ 
+ \author Miro Knejp
+ */
+
+#ifndef XTD_xtd_optional_147e1f97_b281_4728_83af_ad21b7e24056
+#define XTD_xtd_optional_147e1f97_b281_4728_83af_ad21b7e24056
+
+#include <cassert>
+#include <initializer_list>
+#include <functional> // for hash<>
+#include <memory>
+#include <stdexcept>
+#include <type_traits>
+
+namespace xtd
+{
+
+constexpr struct nullopt_t { } nullopt = {};
+constexpr struct in_place_t { } in_place = {};
+
+class bad_optional_access : std::logic_error
+{
+public:
+	explicit bad_optional_access(const std::string& what_arg) : logic_error(what_arg) { }
+	explicit bad_optional_access(const char* what_arg) : logic_error(what_arg) { }
+};
+
+namespace detail {
+namespace optional
+{
+	// circumvent swap() declaration in class optional for ADL
+	template<class T>
+	inline void doswap(T& a, T& b)
+		noexcept(noexcept(swap(std::declval<T&>(), std::declval<T&>())))
+	{
+		swap(a, b);
+	}
+}} // namespace detail::optional
+
+template<class T>
+class optional
+{
+	static_assert(!std::is_reference<T>::value, "xtd::optional cannot store references.");
+	
+public:
+	/// \name Construction & Assignment
+	//@{
+	
+	constexpr optional() noexcept { }
+	constexpr optional(nullopt_t) noexcept { }
+	optional(const optional& other)
+		: _pointer{other ? construct(*other._pointer) : nullptr}
+	{ }
+	optional(optional&& other)
+		: _pointer{other ? construct(std::move(*other._pointer)) : nullptr}
+	{ }
+	constexpr optional(const T& other)
+		: _pointer{construct(other)}
+	{ }
+	constexpr optional(T&& other) noexcept(std::is_nothrow_move_constructible<T>::value)
+		: _pointer{construct(std::move(other))}
+	{ }
+	template<class... Args>
+	constexpr explicit optional(in_place_t, Args&&... args)
+		: _pointer{construct(std::forward<Args>(args)...)}
+	{ }
+	template<class U, class... Args>
+	constexpr explicit optional(typename std::enable_if<std::is_constructible<T, std::initializer_list<U>, Args&&...>::value, in_place_t>::type, std::initializer_list<U> ilist, Args&&... args)
+		: _pointer{construct(ilist, std::forward<Args>(args)...)}
+	{ }
+	
+	optional& operator = (nullopt_t) noexcept { disengage(); return *this; }
+	optional& operator = (const optional& other)
+	{
+		assign(bool(other), *other._pointer);
+		return *this;
+	}
+	optional& operator = (optional&& other)
+		noexcept(std::is_nothrow_move_assignable<T>::value && std::is_nothrow_move_constructible<T>::value)
+	{
+		assign(bool(other), std::move(*other._pointer));
+		return *this;
+	}
+	template<class U>
+	typename std::enable_if<std::is_constructible<T,U>::value && std::is_assignable<T,U>::value, optional&>::type
+		operator = (U&& value)
+	{
+		engage(std::forward<U>(value));
+		return *this;
+	}
+	
+	~optional() { destroy(); }
+	
+	//@}
+	/// \name Observers
+	//@{
+	
+	constexpr const T* operator -> () const { return assertEngaged(), _pointer; }
+	T* operator -> () { return assertEngaged(), _pointer; }
+	constexpr const T& operator * () const { return assertEngaged(), *_pointer; }
+	T& operator * () { return assertEngaged(), *_pointer; }
+	
+	constexpr explicit operator bool () const noexcept { return _pointer != nullptr; }
+	
+	constexpr const T& value() const { return checkEngaged(), *_pointer; }
+	T& value() { return checkEngaged(), *_pointer; }
+	
+	template<class U>
+	constexpr T value_or(U&& value) const& { return bool(*this) ? *_pointer : static_cast<T>(std::forward<U>(value)); }
+	template<class U>
+	T& value_or(U&& value) && { return bool(*this) ? std::move(*_pointer) : static_cast<T>(std::forward<U>(value)); }
+	
+	//@}
+	/// \name Modifiers
+	//@{
+	
+	void swap(optional& other)
+		noexcept(std::is_nothrow_move_constructible<T>::value && noexcept(swap(std::declval<T&>(), std::declval<T&>())))
+	{
+		if(bool(*this) && bool(other))
+		{
+			detail::optional::doswap(*_pointer, *other._pointer);
+		}
+		else if(bool(other) && !bool(*this))
+		{
+			_pointer = construct(std::move(*other._pointer));
+			other.disengage();
+		}
+		else if(bool(*this) && !bool(other))
+		{
+			other._pointer = other.construct(std::move(*_pointer));
+			disengage();
+		}
+	}
+	
+	template<class... Args>
+	void emplace(Args&&... args)
+	{
+		disengage();
+		_pointer = construct(std::forward<Args>(args)...);
+	}
+	template<class U, class... Args>
+	void emplace(std::initializer_list<U> ilist, Args&&... args)
+	{
+		disengage();
+		_pointer = construct(ilist, std::forward<Args>(args)...);
+	}
+
+	//@}
+	
+private:
+	using Storage = typename std::aligned_storage<sizeof(T), std::alignment_of<T>::value>::type;
+	
+	constexpr bool assertEngaged() const
+	{
+		return assert(bool(*this) && "xtd::optional is disengaged"), true;
+	}
+	constexpr bool checkEngaged() const
+	{
+		return bool(*this) ? true : throw bad_optional_access("xtd::optional is disengaged");
+	}
+	template<class... Args>
+	constexpr T* construct(Args&&... args) /*const*/
+	{
+		return new (const_cast<Storage*>(&_storage)) T(std::forward<Args>(args)...);
+	}
+	void destroy()
+	{
+		if(_pointer)
+			_pointer->~T();
+	}
+	void disengage()
+	{
+		destroy();
+		_pointer = nullptr;
+	}
+	template<class U>
+	void assign(bool otherEngaged, U&& u)
+	{
+		if(bool(*this) && !otherEngaged)
+			disengage();
+		else if(otherEngaged)
+			engage(std::forward<U>(u));
+	}
+	template<class U>
+	void engage(U&& u)
+	{
+		if(bool(*this))
+			*_pointer = std::forward<U>(u);
+		else
+			_pointer = construct(std::forward<U>(u));
+	}
+	
+	Storage _storage;
+	typename std::add_pointer<T>::type _pointer = nullptr; // engaged if non-NULL
+};
+
+template<class T>
+inline void swap(optional<T>& a, optional<T>& b) noexcept(noexcept(a.swap(b)))
+{
+	a.swap(b);
+}
+
+// Comparison operators
+
+template<class T>
+constexpr inline bool operator == (const optional<T>& a, const optional<T>& b)
+{
+	return (bool(a) && bool(b) && *a == *b) || (!bool(a) && !bool(b));
+}
+
+template<class T>
+constexpr inline bool operator != (const optional<T>& a, const optional<T>& b)
+{
+	return (bool(a) && bool(b) && !(*a == *b)) || (bool(a) != bool(b));
+}
+
+template<class T>
+constexpr inline bool operator < (const optional<T>& a, const optional<T>& b)
+{
+	return (bool(a) && bool(b) && *a < *b) || (!bool(a) && bool(b));
+}
+
+template<class T>
+constexpr inline bool operator == (const optional<T>& opt, nullopt_t)
+{
+	return !bool(opt);
+}
+
+template<class T>
+constexpr inline bool operator != (const optional<T>& opt, nullopt_t)
+{
+	return bool(opt);
+}
+
+template<class T>
+constexpr inline bool operator == (nullopt_t, const optional<T>& opt)
+{
+	return !bool(opt);
+}
+
+template<class T>
+constexpr inline bool operator != (nullopt_t, const optional<T>& opt)
+{
+	return bool(opt);
+}
+
+template<class T>
+constexpr inline bool operator < (const optional<T>& opt, nullopt_t)
+{
+	return false;
+}
+
+template<class T>
+constexpr inline bool operator < (nullopt_t, const optional<T>& opt)
+{
+	return bool(opt);
+}
+
+template<class T>
+constexpr inline bool operator == (const optional<T>& opt, const T& v)
+{
+	return bool(opt) && (*opt == v);
+}
+
+template<class T>
+constexpr inline bool operator != (const optional<T>& opt, const T& v)
+{
+	return !bool(opt) || !(*opt == v);
+}
+
+template<class T>
+constexpr inline bool operator == (const T& v, const optional<T>& opt)
+{
+	return bool(opt) && (v == *opt);
+}
+
+template<class T>
+constexpr inline bool operator != (const T& v, const optional<T>& opt)
+{
+	return !bool(opt) || !(*opt == v);
+}
+
+template<class T>
+constexpr inline bool operator < (const optional<T>& opt, const T& v)
+{
+	return !bool(opt) || (*opt < v);
+}
+
+// make_optional
+template<class T>
+constexpr inline optional<typename std::decay<T>::type> make_optional(T&& value)
+{
+	return optional<typename std::decay<T>::type>(std::forward<T>(value));
+}
+
+} // namespace xtd
+
+// specialize std::hash
+namespace std
+{
+
+template<class Key>
+struct hash<xtd::optional<Key>>
+{
+	std::size_t operator () (const xtd::optional<Key>& k) const noexcept
+	{
+		// Empty optionals are equal
+		return bool(k) ? hash<Key>{}(*k) : 0;
+	}
+	std::size_t operator () (xtd::optional<Key>&& k) const noexcept
+	{
+		// Empty optionals are equal
+		return bool(k) ? hash<Key>{}(std::move(*k)) : 0;
+	}
+};
+
+} // namesapce std
+
+#endif // XTD_xtd_optional_147e1f97_b281_4728_83af_ad21b7e24056

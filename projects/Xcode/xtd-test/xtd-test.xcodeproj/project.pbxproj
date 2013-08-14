@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		CF2EC83017BAC4F500CADDD2 /* optional.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CF2EC82F17BAC4F500CADDD2 /* optional.cpp */; };
 		CF565B5417B90AD5000A4EDD /* memory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CF565B5317B90AD5000A4EDD /* memory.cpp */; };
 		CF565B5617B90CC1000A4EDD /* utility.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CF565B5517B90CC1000A4EDD /* utility.cpp */; };
 		CF565B5917B91519000A4EDD /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CF565B5817B91519000A4EDD /* main.cpp */; };
@@ -27,6 +28,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		CF2EC82E17BAC46800CADDD2 /* optional */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; path = optional; sourceTree = "<group>"; };
+		CF2EC82F17BAC4F500CADDD2 /* optional.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = optional.cpp; sourceTree = "<group>"; };
 		CF565A9917B8F151000A4EDD /* xtd-test */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "xtd-test"; sourceTree = BUILT_PRODUCTS_DIR; };
 		CF565AA617B8F182000A4EDD /* iomanip */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; path = iomanip; sourceTree = "<group>"; };
 		CF565AA717B8F182000A4EDD /* memory */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; path = memory; sourceTree = "<group>"; };
@@ -72,6 +75,7 @@
 			children = (
 				CF565AA617B8F182000A4EDD /* iomanip */,
 				CF565AA717B8F182000A4EDD /* memory */,
+				CF2EC82E17BAC46800CADDD2 /* optional */,
 				CF565B5C17B91C9F000A4EDD /* string */,
 				CF565AA817B8F182000A4EDD /* utility */,
 			);
@@ -94,6 +98,7 @@
 			children = (
 				CF565B5A17B915A9000A4EDD /* iomanip.cpp */,
 				CF565B5317B90AD5000A4EDD /* memory.cpp */,
+				CF2EC82F17BAC4F500CADDD2 /* optional.cpp */,
 				CF565B5D17B91CAF000A4EDD /* string.cpp */,
 				CF565B5517B90CC1000A4EDD /* utility.cpp */,
 			);
@@ -156,6 +161,7 @@
 				CF565B5917B91519000A4EDD /* main.cpp in Sources */,
 				CF565B5B17B915A9000A4EDD /* iomanip.cpp in Sources */,
 				CF565B5E17B91CAF000A4EDD /* string.cpp in Sources */,
+				CF2EC83017BAC4F500CADDD2 /* optional.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
