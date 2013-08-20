@@ -93,21 +93,21 @@ BOOST_AUTO_TEST_CASE(Construction)
 	optional<int> opt1;
 	optional<int> opt2{nullopt};
 	
-	BOOST_CHECK(!bool(opt1));
-	BOOST_CHECK(!bool(opt2));
+	BOOST_CHECK(!opt1);
+	BOOST_CHECK(!opt2);
 	BOOST_CHECK_THROW(opt1.value(), bad_optional_access);
 	BOOST_CHECK_THROW(opt2.value(), bad_optional_access);
 
 	std::string s1 = "hello";
 	
 	optional<std::string> opt3{s1}; // copy
-	BOOST_CHECK(bool(opt3));
+	BOOST_CHECK(opt3);
 	BOOST_CHECK_NO_THROW(opt3.value());
 	BOOST_CHECK_EQUAL(*opt3, s1);
 
 	std::string s2 = s1;
 	optional<std::string> opt4{std::move(s2)}; // move
-	BOOST_CHECK(bool(opt4));
+	BOOST_CHECK(opt4);
 	BOOST_CHECK_NO_THROW(opt4.value());
 	BOOST_CHECK_EQUAL(*opt4, s1);
 	BOOST_CHECK_EQUAL(s2, std::string{});
@@ -119,13 +119,13 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(ConstructionTemplated, T, types)
 {
 	{
 		optional<T> opt{T{}};
-		BOOST_CHECK(bool(opt));
+		BOOST_CHECK(opt);
 		BOOST_CHECK_EQUAL(*opt, T{});
 	}
 	{
 		optional<T> opt1{T{}};
 		optional<T> opt2{opt1};
-		BOOST_CHECK(bool(opt2));
+		BOOST_CHECK(opt2);
 		BOOST_CHECK_EQUAL(*opt2, *opt1);
 	}
 }
@@ -186,21 +186,21 @@ BOOST_AUTO_TEST_CASE(Assignment)
 		optional<int> b;
 
 		a = b;
-		BOOST_CHECK(!bool(a));
+		BOOST_CHECK(!a);
 	}
 	{
 		optional<int> a{1};
 		optional<int> b;
 		
 		a = b;
-		BOOST_CHECK(!bool(a));
+		BOOST_CHECK(!a);
 	}
 	{
 		optional<int> a{};
 		optional<int> b{1};
 		
 		a = b;
-		BOOST_CHECK(bool(a));
+		BOOST_CHECK(a);
 		BOOST_CHECK_EQUAL(*a, 1);
 	}
 	{
@@ -214,13 +214,13 @@ BOOST_AUTO_TEST_CASE(Assignment)
 		optional<int> a{1};
 		
 		a = nullopt;
-		BOOST_CHECK(!bool(a));
+		BOOST_CHECK(!a);
 	}
 	{
 		optional<int> a{};
 		
 		a = 1;
-		BOOST_CHECK(bool(a));
+		BOOST_CHECK(a);
 		BOOST_CHECK_EQUAL(*a, 1);
 	}
 	{
@@ -237,15 +237,15 @@ BOOST_AUTO_TEST_CASE(Observers)
 {
 	{
 		optional<int> a;
-		BOOST_CHECK(!bool(a));
+		BOOST_CHECK(!a);
 		BOOST_CHECK_THROW(a.value(), bad_optional_access);
 		BOOST_CHECK_NO_THROW(a.value_or(1));
-		BOOST_CHECK(!bool(a)); // value_or must not change engaged state
+		BOOST_CHECK(!a); // value_or must not change engaged state
 		BOOST_CHECK_EQUAL(a.value_or(1), 1);
 	}
 	{
 		optional<std::string> a{"1234"};
-		BOOST_CHECK(bool(a));
+		BOOST_CHECK(a);
 		BOOST_CHECK_NO_THROW(a.value());
 		BOOST_CHECK_EQUAL(a.value(), "1234");
 		BOOST_CHECK_EQUAL(*a, "1234");
@@ -270,22 +270,22 @@ BOOST_AUTO_TEST_CASE(Modifiers)
 		optional<std::string> a;
 		optional<std::string> b;
 		a.swap(b);
-		BOOST_CHECK(!bool(a));
-		BOOST_CHECK(!bool(b));
+		BOOST_CHECK(!a);
+		BOOST_CHECK(!b);
 	}
 	{
 		optional<std::string> a;
 		optional<std::string> b{"b"};
 		a.swap(b);
 		BOOST_CHECK_EQUAL(*a, "b");
-		BOOST_CHECK(!bool(b));
+		BOOST_CHECK(!b);
 	}
 	{
 		optional<std::string> a{"a"};
 		optional<std::string> b;
 		a.swap(b);
 		BOOST_CHECK_EQUAL(*b, "a");
-		BOOST_CHECK(!bool(a));
+		BOOST_CHECK(!a);
 	}
 	{
 		optional<std::string> a{"a"};
