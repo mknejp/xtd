@@ -40,6 +40,7 @@
 		CF565B5A17B915A9000A4EDD /* iomanip.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = iomanip.cpp; sourceTree = "<group>"; };
 		CF565B5C17B91C9F000A4EDD /* string */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; path = string; sourceTree = "<group>"; };
 		CF565B5D17B91CAF000A4EDD /* string.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = string.cpp; sourceTree = "<group>"; };
+		CF6DAE6917C31ADA00EBFE7C /* type_traits */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; path = type_traits; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -77,6 +78,7 @@
 				CF565AA717B8F182000A4EDD /* memory */,
 				CF2EC82E17BAC46800CADDD2 /* optional */,
 				CF565B5C17B91C9F000A4EDD /* string */,
+				CF6DAE6917C31ADA00EBFE7C /* type_traits */,
 				CF565AA817B8F182000A4EDD /* utility */,
 			);
 			name = xtd;
