@@ -171,6 +171,12 @@ BOOST_AUTO_TEST_CASE(Constexpr)
 	
 	BOOST_CHECK_EQUAL(i, *a);
 	BOOST_CHECK_EQUAL(j, *a);
+	
+	struct Literal { };
+	
+	static_assert(std::is_literal_type<optional<int>>::value, "Type error");
+	static_assert(std::is_literal_type<optional<float>>::value, "Type error");
+	static_assert(std::is_literal_type<optional<Literal>>::value, "Type error");
 }
 
 BOOST_AUTO_TEST_CASE(Assignment)
