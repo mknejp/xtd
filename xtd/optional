@@ -63,6 +63,8 @@ class optional
 {
 	static_assert(!std::is_reference<T>::value, "xtd::optional cannot store references.");
 	static_assert(std::is_destructible<T>::value, "xtd::optional can only store destructible values.");
+	static_assert(!std::is_same<typename std::remove_cv<T>::type, nullopt_t>::value, "xtd::optional cannot store nullopt_t.");
+	static_assert(!std::is_same<typename std::remove_cv<T>::type, in_place_t>::value, "xtd::optional cannot store in_place_t.");
 	
 public:
 	/// \name Construction & Assignment
