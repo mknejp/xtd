@@ -126,7 +126,7 @@ public:
 	/**
 	 Get a reference to the character at the specified position.
 	 
-	 \throws std::out_of_range if <tt>pos &gt;= size()</tt>.
+	 \throws std::out_of_range if <tt>pos >= size()</tt>.
 	 */
 	constexpr const CharT& at(size_type pos) const
 	{
@@ -157,14 +157,14 @@ public:
 	{
 		*this = basic_string_view{};
 	}
-	/// Remove the leading \p n characters, undefined behavior if <tt>n &gt; size()</tt>.
+	/// Remove the leading \p n characters, undefined behavior if <tt>n > size()</tt>.
 	void remove_prefix(size_type n)
 	{
 		assert(n <= size() && "xtd::basic_string_view::remove_prefix: n is bigger than string");
 		_data += n;
 		_len -= n;
 	}
-	/// Remove the trailing \p n characters, undefined behavior if <tt>n &gt; size()</tt>.
+	/// Remove the trailing \p n characters, undefined behavior if <tt>n > size()</tt>.
 	void remove_suffix(size_type n)
 	{
 		assert(n <= size() && "xtd::basic_string_view::remove_suffix: n is bigger than string");
@@ -187,7 +187,7 @@ public:
 	 \param pos The starting position of the substring, must be < size().
 	 \param n Optional length of the substring, truncated to the remaining length if required. If empty takes the remaining string length.
 	 
-	 \throws std::out_of_range if <tt>pos &gt;= size()</tt>.
+	 \throws std::out_of_range if <tt>pos >= size()</tt>.
 	 */
 		constexpr basic_string_view substr(size_type pos, optional<size_type> n = nullopt) const
 	{
@@ -350,14 +350,9 @@ private:
 	size_type _len;
 };
 
-/// Swap the referenced contents of two basic_string_view objects.
-template<class CharT, class Traits>
-inline void swap(basic_string_view<CharT, Traits>& a, basic_string_view<CharT, Traits>& b) noexcept
-{
-	a.swap(b);
-}
-
-// Comparison operators
+/// \name Relational operators
+/// \relates xtd::basic_string_view
+//@{
 
 /// True if the two strings are lexicographically equal.
 template<class CharT, class Traits>
@@ -485,7 +480,22 @@ inline bool operator >= (basic_string_view<CharT, Traits> a, const CharT* b)
 	return a >= basic_string_view<CharT, Traits>{b};
 }
 
-// explicit to_string conversion
+//@}
+/// \name Swap
+/// \relates xtd::basic_string_view
+//@{
+
+/// Swap the referenced contents of two basic_string_view objects.
+template<class CharT, class Traits>
+inline void swap(basic_string_view<CharT, Traits>& a, basic_string_view<CharT, Traits>& b) noexcept
+{
+	a.swap(b);
+}
+
+//@}
+/// \name Specialized algorithms
+/// \relates xtd::basic_string_view
+//@{
 
 /// convert a basci-string_view to a std::string_view, optionally specifying a custom allocator.
 template<class CharT, class Traits, class Allocator = std::allocator<CharT>>
@@ -494,12 +504,16 @@ inline std::basic_string<CharT, Traits, Allocator> to_string(basic_string_view<C
 	return std::basic_string<CharT, Traits, Allocator>{s.cbegin(), s.cend(), alloc};
 }
 
+//@}
+
 // TODO: add numeric conversions
 // TODO: std::hash<...>
 
-// Formatted ouput
+/// \name Inserter
+/// \relates xtd::basic_string_view
+//@{
 
-/// Performs a formatted output of the content referenced by \p s according to the rules of FormattedOuput.
+/// Performs a formatted output of the content referenced by \p s according to the rules of FormattedOuput [ostream.formatted.reqmts].
 template<class CharT, class Traits>
 std::basic_ostream<CharT, Traits>& operator << (std::basic_ostream<CharT, Traits>& os, basic_string_view<CharT, Traits> s)
 {
@@ -539,6 +553,11 @@ std::basic_ostream<CharT, Traits>& operator << (std::basic_ostream<CharT, Traits
 	return os;
 }
 
+//@}
+/// \name basic_string_view specializations
+/// \relates xtd::basic_string_view
+//@{
+
 /// Specialization of basic_string_view for \p char.
 using string_view = basic_string_view<char>;
 /// Specialization of basic_string_view for \p char16_t.
@@ -547,6 +566,8 @@ using u16string_view = basic_string_view<char16_t>;
 using u32string_view = basic_string_view<char32_t>;
 /// Specialization of basic_string_view for \p wchar_t.
 using wstring_view = basic_string_view<wchar_t>;
+
+//@}
 
 } // namespace xtd
 
