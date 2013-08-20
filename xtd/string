@@ -6,9 +6,10 @@
 
 /**
  \file
- Implementation of the string_view proposal N3609.
+ Partial implementation of the string_view proposal N3609 with some discrepancies.
  
- http://htmlpreview.github.io/?https://github.com/google/cxx-std-draft/blob/string-ref-paper/string_view.html
+ Reference: http://htmlpreview.github.io/?https://github.com/google/cxx-std-draft/blob/string-ref-paper/string_view.html
+ This implementation uses xtd::optional to avoid the "npos" hack.
  
  \author Miro Knejp
  */
@@ -16,12 +17,11 @@
 #ifndef XTD_xtd_string_44929f79_d6b5_452e_9c17_2f5e98fb7dfb
 #define XTD_xtd_string_44929f79_d6b5_452e_9c17_2f5e98fb7dfb
 
+#include <xtd/optional>
 #include <algorithm>
-#include <cassert>
 #include <iosfwd>
 #include <iterator>
 #include <limits>
-#include <stdexcept>
 #include <string>
 
 namespace xtd
@@ -48,9 +48,6 @@ public:
 	using const_iterator = iterator;
 	using reverse_iterator = std::reverse_iterator<iterator>;
 	using const_reverse_iterator = std::reverse_iterator<const_iterator>;
-	
-	/// A special value indicating an invalid position in a string.
-	constexpr static const size_type npos = -1;
 	
 	//@}
 	/// \name Construction & Assignment
@@ -114,8 +111,6 @@ public:
 	constexpr size_type size() const noexcept { return _len; }
 	/// Returns the number of characters
 	constexpr size_type length() const noexcept { return size(); }
-	/// Returns the maximum number of characters
-	constexpr size_type max_size() const noexcept { return std::numeric_limits<size_type>::max() / 2; }
 	/// Checks whether the string is empty
 	constexpr bool empty() const noexcept { return size() == 0; }
 
@@ -190,11 +185,11 @@ public:
 	 Get string_view for the specified substring range.
 	 
 	 \param pos The starting position of the substring, must be < size().
-	 \param n The length of the substring, truncated to the remaining length is required. If this vale is \p npos takes the rest of the string.
+	 \param n Optional length of the substring, truncated to the remaining length if required. If empty takes the remaining string length.
 	 
 	 \throws std::out_of_range if <tt>pos &gt;= size()</tt>.
 	 */
-	constexpr basic_string_view substr(size_type pos, size_type n = npos) const
+		constexpr basic_string_view substr(size_type pos, optional<size_type> n = nullopt) const
 	{
 		return checkPosition(pos), basic_string_view{offset(pos), tail(pos, n)};
 	}
@@ -246,62 +241,62 @@ public:
 	
 	//@}
 	/// \name Searching
-	/// All methods in this group return \p npos if the search fails, otherwise the index of the first character found.
+	/// All methods in this group return an empty optional if the search fails, otherwise it contains the index of the first character found.
 	//@{
 
-	size_type find(basic_string_view s) const
+	optional<size_type> find(basic_string_view s) const
 	{
 		assertNonNull();
 		return forwardIterOffset(std::search(begin(), end(), s.begin(), s.end(), Traits::eq));
 	}
-	size_type find(CharT ch) const
+	optional<size_type> find(CharT ch) const
 	{
 		assertNonNull();
 		return forwardIterOffset(std::find_if(begin(), end(), [ch] (CharT x) { return Traits::eq(x, ch); }));
 	}
-	size_type rfind(basic_string_view s) const
+	optional<size_type> rfind(basic_string_view s) const
 	{
 		assertNonNull();
 		return forwardIterOffset(std::find_end(begin(), end(), s.begin(), s.end(), Traits::eq));
 	}
-	size_type rfind(CharT ch) const
+	optional<size_type> rfind(CharT ch) const
 	{
 		assertNonNull();
 		return reverseIterOffset(std::find_if(rbegin(), rend(), [ch] (CharT x) { return Traits::eq(x, ch); }));
 	}
-	size_type find_first_of(basic_string_view s) const
+	optional<size_type> find_first_of(basic_string_view s) const
 	{
 		assertNonNull();
 		return forwardIterOffset(std::find_first_of(begin(), end(), s.begin(), s.end(), Traits::eq));
 	}
-	size_type find_first_of(CharT ch) const
+	optional<size_type> find_first_of(CharT ch) const
 	{
 		return find(ch);
 	}
-	size_type find_last_of(basic_string_view s) const
+	optional<size_type> find_last_of(basic_string_view s) const
 	{
 		assertNonNull();
 		return reverseIterOffset(std::find_first_of(rbegin(), rend(), s.begin(), s.end(), Traits::eq));
 	}
-	size_type find_last_of(CharT ch) const
+	optional<size_type> find_last_of(CharT ch) const
 	{
 		return rfind(ch);
 	}
-	size_type find_first_not_of(basic_string_view s) const
+	optional<size_type> find_first_not_of(basic_string_view s) const
 	{
 		assertNonNull();
 		return forwardIterOffset(findNotOf(begin(), end(), s));
 	}
-	size_type find_first_not_of(CharT ch) const
+	optional<size_type> find_first_not_of(CharT ch) const
 	{
 		assertNonNull();
 		return forwardIterOffset(std::find_if_not(begin(), end(), [ch] (CharT x) { return Traits::eq(x, ch); }));
 	}
-	size_type find_last_not_of(basic_string_view s) const
+	optional<size_type> find_last_not_of(basic_string_view s) const
 	{
 		return reverseIterOffset(findNotOf(rbegin(), rend(), s));
 	}
-	size_type find_last_not_of(CharT ch) const
+	optional<size_type> find_last_not_of(CharT ch) const
 	{
 		assertNonNull();
 		return reverseIterOffset(std::find_if_not(rbegin(), rend(), [ch] (CharT x) { return Traits::eq(ch, x); }));
@@ -316,9 +311,9 @@ private:
 		return _data + (pos >= size() ? size() : pos);
 	}
 	// Get the length of a substring starting at pos with size n
-	constexpr size_type tail(size_type pos, size_type n) const noexcept
+	constexpr size_type tail(size_type pos, optional<size_type> n) const noexcept
 	{
-		return n == npos || n + pos > size() ? size() - pos : n;
+		return !n || *n + pos > size() ? size() - pos : *n;
 	}
 	constexpr bool assertNonNull() const noexcept
 	{
@@ -332,13 +327,13 @@ private:
 	{
 		return pos >= size() ? throw std::out_of_range{"xtd::basic_string_view pos out of range."} : true;
 	}
-	size_type forwardIterOffset(iterator it) const
+	optional<size_type> forwardIterOffset(iterator it) const
 	{
-		return it == end() ? npos : it - begin();
+		return it == end() ? optional<size_type>{nullopt} : optional<size_type>{it - begin()};
 	}
-	size_type reverseIterOffset(reverse_iterator it) const
+	optional<size_type> reverseIterOffset(reverse_iterator it) const
 	{
-		return it == rend() ? npos : it.base() - 1 - begin();
+		return it == rend() ? optional<size_type>{nullopt} : optional<size_type>{it.base() - 1 - begin()};
 	}
 	template<class Iter>
 	static Iter findNotOf(Iter first, Iter last, basic_string_view s)
@@ -543,9 +538,6 @@ std::basic_ostream<CharT, Traits>& operator << (std::basic_ostream<CharT, Traits
 		os.setstate(Stream::failbit);
 	return os;
 }
-
-template<class CharT, class Traits>
-const typename basic_string_view<CharT, Traits>::size_type basic_string_view<CharT, Traits>::npos;
 
 /// Specialization of basic_string_view for \p char.
 using string_view = basic_string_view<char>;

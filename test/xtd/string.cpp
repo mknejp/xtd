@@ -17,6 +17,21 @@
 #include <iomanip>
 #include <sstream>
 
+namespace xtd
+{
+
+template<class CharT, class Traits, class T>
+std::basic_ostream<CharT, Traits>& operator << (std::basic_ostream<CharT, Traits>& os, const optional<T>& opt)
+{
+	if(opt)
+		os << "<engaged: " << *opt << ">";
+	else
+		os << "<disengaged>";
+	return os;
+}
+
+} // namespace xtd
+
 using namespace xtd;
 
 namespace
@@ -203,46 +218,46 @@ BOOST_AUTO_TEST_CASE(Searching)
 	auto str = string_view{url};
 	
 	// Success cases
-	BOOST_CHECK_EQUAL(str.find('/'), 5);
-	BOOST_CHECK_EQUAL(str.find(""), 0);
-	BOOST_CHECK_EQUAL(str.find("/"), 5);
-	BOOST_CHECK_EQUAL(str.find(".cppreference"), 9);
+	BOOST_CHECK_EQUAL(*str.find('/'), 5);
+	BOOST_CHECK_EQUAL(*str.find(""), 0);
+	BOOST_CHECK_EQUAL(*str.find("/"), 5);
+	BOOST_CHECK_EQUAL(*str.find(".cppreference"), 9);
 	
-	BOOST_CHECK_EQUAL(str.rfind('/'), 32);
-	BOOST_CHECK_EQUAL(str.rfind("/"), 32);
-	BOOST_CHECK_EQUAL(str.rfind(".cppreference"), 9);
+	BOOST_CHECK_EQUAL(*str.rfind('/'), 32);
+	BOOST_CHECK_EQUAL(*str.rfind("/"), 32);
+	BOOST_CHECK_EQUAL(*str.rfind(".cppreference"), 9);
 	
-	BOOST_CHECK_EQUAL(str.find_first_of('/'), 5);
-	BOOST_CHECK_EQUAL(str.find_first_of("/.=:"), 4); // : in "http:"
-	BOOST_CHECK_EQUAL(str.find_first_of("frc"), 10); // c in "cppreference"
+	BOOST_CHECK_EQUAL(*str.find_first_of('/'), 5);
+	BOOST_CHECK_EQUAL(*str.find_first_of("/.=:"), 4); // : in "http:"
+	BOOST_CHECK_EQUAL(*str.find_first_of("frc"), 10); // c in "cppreference"
 	
-	BOOST_CHECK_EQUAL(str.find_first_not_of('h'), 1);
-	BOOST_CHECK_EQUAL(str.find_first_not_of("ehnpt.:/"), 10); // skip "http://en."
+	BOOST_CHECK_EQUAL(*str.find_first_not_of('h'), 1);
+	BOOST_CHECK_EQUAL(*str.find_first_not_of("ehnpt.:/"), 10); // skip "http://en."
 	
-	BOOST_CHECK_EQUAL(str.find_last_of('&'), 79);
-	BOOST_CHECK_EQUAL(str.find_last_of("%?s"), 73); // s in "=string&"
+	BOOST_CHECK_EQUAL(*str.find_last_of('&'), 79);
+	BOOST_CHECK_EQUAL(*str.find_last_of("%?s"), 73); // s in "=string&"
 	
-	BOOST_CHECK_EQUAL(str.find_last_not_of('='), sizeof(url) - 3);
-	BOOST_CHECK_EQUAL(str.find_last_not_of("=&bgnotu"), 76); // i in "=string&"
+	BOOST_CHECK_EQUAL(*str.find_last_not_of('='), sizeof(url) - 3);
+	BOOST_CHECK_EQUAL(*str.find_last_not_of("=&bgnotu"), 76); // i in "=string&"
 	
 	// Fail cases
-	BOOST_CHECK_EQUAL(str.find('-'), string_view::npos);
-	BOOST_CHECK_EQUAL(str.find("!"), string_view::npos);
-	BOOST_CHECK_EQUAL(str.find("Homer"), string_view::npos);
+	BOOST_CHECK(!str.find('-'));
+	BOOST_CHECK(!str.find("!"));
+	BOOST_CHECK(!str.find("Homer"));
 	
-	BOOST_CHECK_EQUAL(str.rfind('-'), string_view::npos);
-	BOOST_CHECK_EQUAL(str.rfind("!"), string_view::npos);
-	BOOST_CHECK_EQUAL(str.rfind("Homer"), string_view::npos);
+	BOOST_CHECK(!str.rfind('-'));
+	BOOST_CHECK(!str.rfind("!"));
+	BOOST_CHECK(!str.rfind("Homer"));
 	
-	BOOST_CHECK_EQUAL(str.find_first_of('-'), string_view::npos);
-	BOOST_CHECK_EQUAL(str.find_first_of("!-_"), string_view::npos);
+	BOOST_CHECK(!str.find_first_of('-'));
+	BOOST_CHECK(!str.find_first_of("!-_"));
 	
-	BOOST_CHECK_EQUAL(str.find_last_of('-'), string_view::npos);
-	BOOST_CHECK_EQUAL(str.find_last_of("!-_"), string_view::npos);
+	BOOST_CHECK(!str.find_last_of('-'));
+	BOOST_CHECK(!str.find_last_of("!-_"));
 	
-	BOOST_CHECK_EQUAL(str.find_first_not_of(url), string_view::npos);
+	BOOST_CHECK(!str.find_first_not_of(url));
 	
-	BOOST_CHECK_EQUAL(str.find_last_not_of(url), string_view::npos);
+	BOOST_CHECK(!str.find_last_not_of(url));
 }
 
 BOOST_AUTO_TEST_CASE(Swap)
