@@ -28,3 +28,5 @@ CVS
 
 # Other
 /libs/
+/dox/
+/doxyfile

@@ -153,6 +153,26 @@ BOOST_AUTO_TEST_CASE(ConstructionVariadic)
 	BOOST_CHECK_EQUAL_COLLECTIONS(init.begin(), init.end(), opt2->v.begin(), opt2->v.end());
 }
 
+BOOST_AUTO_TEST_CASE(Constexpr)
+{
+	constexpr auto string = "abcdefgh";
+	constexpr optional<int> a{32};
+	constexpr optional<decltype(string)> b{string};
+	constexpr optional<float> c{3.14f};
+	constexpr optional<int> d{};
+	
+	BOOST_CHECK_EQUAL(*a, 32);
+	BOOST_CHECK_EQUAL(*b, string);
+	BOOST_CHECK_EQUAL(*c, 3.14f);
+	BOOST_CHECK(!d);
+	
+	constexpr int i = *a;
+	constexpr int j = a.value();
+	
+	BOOST_CHECK_EQUAL(i, *a);
+	BOOST_CHECK_EQUAL(j, *a);
+}
+
 BOOST_AUTO_TEST_CASE(Assignment)
 {
 	{
@@ -427,43 +447,40 @@ BOOST_AUTO_TEST_CASE(CompareOperators)
 		optional<std::string> a;
 		optional<std::string> b;
 		BOOST_CHECK(a == b);
-		BOOST_CHECK(!(a != b));
 		BOOST_CHECK(!(a < b));
 	}
 	{
 		optional<std::string> a{"a"};
 		optional<std::string> b{"b"};
 		BOOST_CHECK(!(a == b));
-		BOOST_CHECK(a != b);
+		BOOST_CHECK(!(b < a));
 		BOOST_CHECK(a < b);
 	}
 	{
 		optional<std::string> a{"a"};
 		optional<std::string> b{"a"};
 		BOOST_CHECK(a == b);
-		BOOST_CHECK(!(a != b));
 		BOOST_CHECK(!(a < b));
+		BOOST_CHECK(!(b < a));
 	}
 	{
 		optional<std::string> a;
 		optional<std::string> b{"b"};
 		BOOST_CHECK(!(a == b));
-		BOOST_CHECK(a != b);
 		BOOST_CHECK(a < b);
+		BOOST_CHECK(!(b < a));
 	}
 	{
 		optional<std::string> a{"a"};
 		optional<std::string> b;
 		BOOST_CHECK(!(a == b));
-		BOOST_CHECK(a != b);
 		BOOST_CHECK(!(a < b));
+		BOOST_CHECK(b < a);
 	}
 	{
 		optional<std::string> a{"a"};
 		BOOST_CHECK(!(a == nullopt));
-		BOOST_CHECK(a != nullopt);
 		BOOST_CHECK(!(nullopt == a));
-		BOOST_CHECK(nullopt != a);
 		BOOST_CHECK(!(a < nullopt));
 		BOOST_CHECK(nullopt < a);
 	}
@@ -472,8 +489,6 @@ BOOST_AUTO_TEST_CASE(CompareOperators)
 		std::string b{"b"};
 		BOOST_CHECK(!(a == b));
 		BOOST_CHECK(!(b == a));
-		BOOST_CHECK(a != b);
-		BOOST_CHECK(b != a);
 		BOOST_CHECK(a < b);
 	}
 	{
@@ -481,8 +496,6 @@ BOOST_AUTO_TEST_CASE(CompareOperators)
 		std::string b{"b"};
 		BOOST_CHECK(!(a == b));
 		BOOST_CHECK(!(b == a));
-		BOOST_CHECK(a != b);
-		BOOST_CHECK(b != a);
 		BOOST_CHECK(a < b);
 	}
 }
