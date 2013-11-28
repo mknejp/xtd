@@ -399,7 +399,7 @@ private:
 /// \relates xtd::optional
 //@{
 
-/// True if either both optionals are disengaged or engaged with equal values (using <tt>operator ==</tt>).
+/// True if either both optionals are disengaged or engaged and their values are equal (using <tt>operator ==</tt>).
 template<class T>
 constexpr inline bool operator == (const optional<T>& x, const optional<T>& y)
 {
@@ -458,14 +458,14 @@ constexpr inline bool operator == (const optional<T>& x, const T& v)
 	return x && *x == v;
 }
 
-/// True if \p x is engaged and it's value equals \p v (using <tt>operator ==</tt>).
+/// True if \p opt is engaged and it's value equals \p v (using <tt>operator ==</tt>).
 template<class T>
 constexpr inline bool operator == (const T& v, const optional<T>& x)
 {
 	return x && (*x == v);
 }
 
-/// True if \p x is disengaged or it's value is less than \p v (using \p std::less<T>).
+/// True if \p opt is disengaged or it's value is less than \p v (using \p std::less<T>).
 template<class T>
 constexpr inline bool operator < (const optional<T>& x, const T& v)
 {
