@@ -61,6 +61,10 @@ public:
 	basic_string_view(const CharT* chars) noexcept(noexcept(Traits::length(chars)))
 		: _data{chars}, _len{chars ? Traits::length(chars) : 0}
 	{ }
+	/// Construct from the half-open range of characters `[first, last)`
+	basic_string_view(const CharT* first, const CharT* last)
+		: _data{first}, _len{static_cast<size_type>(last - first)}
+	{ }
 	/// Construct from C-string taking the first \p len character only.
 	constexpr basic_string_view(const CharT* chars, size_type len) noexcept
 		: _data{chars}, _len{chars ? len : 0}
