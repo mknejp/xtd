@@ -9,134 +9,114 @@
 #define NDEBUG
 #endif
 
-#include <xtd/optional>
+#include <xtd/optional.hpp>
 
-#include <boost/mpl/vector.hpp>
-#include <boost/test/unit_test.hpp>
+#include <gmock/gmock.h>
 
 #include <complex>
 #include <string>
 
+using namespace testing;
+
 namespace xtd
 {
-
-template<class CharT, class Traits, class T>
-std::basic_ostream<CharT, Traits>& operator << (std::basic_ostream<CharT, Traits>& os, const optional<T>& opt)
-{
-	if(opt)
-		os << "<engaged: " << *opt << ">";
-	else
-		os << "<disengaged>";
-	return os;
-}
-
+	template<class CharT, class Traits, class T>
+	std::basic_ostream<CharT, Traits>& operator << (std::basic_ostream<CharT, Traits>& os, const optional<T>& opt)
+	{
+		if(opt)
+			os << "<engaged: " << *opt << ">";
+		else
+			os << "<disengaged>";
+		return os;
+	}
 } // namespace xtd
 
 namespace
 {
-
-// help classes to track special member function calls
-struct Counters
-{
-	int ctor = 0;
-	int copyCtor = 0;
-	int moveCtor = 0;
-	int dtor = 0;
-	int assign = 0;
-	int move = 0;
-	bool operator == (const std::vector<int>& v)
+	// help classes to track special member function calls
+	struct Counters
 	{
-		return ctor == v[0] && copyCtor == v[1] && moveCtor == v[2] && dtor == v[3] && assign == v[4] && move == v[5];
+		int ctor = 0;
+		int copyCtor = 0;
+		int moveCtor = 0;
+		int dtor = 0;
+		int assign = 0;
+		int move = 0;
+		friend bool operator==(const Counters& c, const std::vector<int>& v)
+		{
+			return c.ctor == v[0] && c.copyCtor == v[1] && c.moveCtor == v[2] && c.dtor == v[3] && c.assign == v[4] && c.move == v[5];
+		}
+	};
+
+	struct Counter
+	{
+		Counter(Counters& c) : c(c) { ++ c.ctor; }
+		Counter(const Counter& other) : c(other.c) { ++c.copyCtor; }
+		Counter(Counter&& other) : c(other.c) { ++c.moveCtor; }
+		~Counter() { ++c.dtor; }
+		
+		Counter& operator = (const Counter& other) { ++c.assign; return *this; }
+		Counter& operator = (Counter&& other) { ++c.move; return *this; }
+		
+		Counters& c;
+	};
+
+	struct DontDestroy
+	{
+		~DontDestroy() { fail(); };
+		void fail() { FAIL() << "destructor invoked"; }
+	};
+
+	void swap(DontDestroy& a, DontDestroy& b)
+	{
+		auto temp = std::move(a);
+		a = std::move(b);
+		b = std::move(temp);
 	}
-};
 
-struct Counter
-{
-	Counter(Counters& c) : c(c) { ++ c.ctor; }
-	Counter(const Counter& other) : c(other.c) { ++c.copyCtor; }
-	Counter(Counter&& other) : c(other.c) { ++c.moveCtor; }
-	~Counter() { ++c.dtor; }
-	
-	Counter& operator = (const Counter& other) { ++c.assign; return *this; }
-	Counter& operator = (Counter&& other) { ++c.move; return *this; }
-	
-	Counters& c;
-};
-
-struct DontDestroy
-{
-	~DontDestroy() { BOOST_ERROR("Dtor invoked"); };
-};
-
-void swap(DontDestroy& a, DontDestroy& b)
-{
-	auto temp = std::move(a);
-	a = std::move(b);
-	b = std::move(temp);
-}
-
-void swap(Counter& a, Counter& b)
-{
-	auto temp = std::move(a);
-	a = std::move(b);
-	b = std::move(temp);
-}
-
+	void swap(Counter& a, Counter& b)
+	{
+		auto temp = std::move(a);
+		a = std::move(b);
+		b = std::move(temp);
+	}
 } // namespace
 
 using namespace xtd;
 
-BOOST_AUTO_TEST_SUITE(xtd_optional)
-
-BOOST_AUTO_TEST_CASE(Construction)
+TEST(Optional, Construction)
 {
 	optional<int> opt1;
-	optional<int> opt2{nullopt};
+	optional<int> opt2{xtd::nullopt};
 	
-	BOOST_CHECK(!opt1);
-	BOOST_CHECK(!opt2);
-	BOOST_CHECK_THROW(opt1.value(), bad_optional_access);
-	BOOST_CHECK_THROW(opt2.value(), bad_optional_access);
+	EXPECT_FALSE(opt1);
+	EXPECT_FALSE(opt2);
+	EXPECT_THROW(opt1.value(), bad_optional_access);
+	EXPECT_THROW(opt2.value(), bad_optional_access);
 
 	std::string s1 = "hello";
 	
 	optional<std::string> opt3{s1}; // copy
-	BOOST_CHECK(opt3);
-	BOOST_CHECK_NO_THROW(opt3.value());
-	BOOST_CHECK_EQUAL(*opt3, s1);
+	EXPECT_TRUE(opt3);
+	EXPECT_NO_THROW(opt3.value());
+	EXPECT_THAT(*opt3, Eq(s1));
 
 	std::string s2 = s1;
 	optional<std::string> opt4{std::move(s2)}; // move
-	BOOST_CHECK(opt4);
-	BOOST_CHECK_NO_THROW(opt4.value());
-	BOOST_CHECK_EQUAL(*opt4, s1);
-	BOOST_CHECK_EQUAL(s2, std::string{});
+	EXPECT_TRUE(opt4);
+	EXPECT_NO_THROW(opt4.value());
+	EXPECT_THAT(*opt4, Eq(s1));
+	EXPECT_THAT(s2, Eq(std::string{}));
 }
 
-using types = boost::mpl::vector<int, float, std::string, std::complex<double>>;
-
-BOOST_AUTO_TEST_CASE_TEMPLATE(ConstructionTemplated, T, types)
-{
-	{
-		optional<T> opt{T{}};
-		BOOST_CHECK(opt);
-		BOOST_CHECK_EQUAL(*opt, T{});
-	}
-	{
-		optional<T> opt1{T{}};
-		optional<T> opt2{opt1};
-		BOOST_CHECK(opt2);
-		BOOST_CHECK_EQUAL(*opt2, *opt1);
-	}
-}
-
-BOOST_AUTO_TEST_CASE(ConstructionVariadic)
+TEST(Optional, ConstructionVariadic)
 {
 	struct VariadicTest
 	{
 		VariadicTest(std::initializer_list<int> i, float f, char c, bool b)
-			: v{i.begin(), i.end()}, f{f}, c{c}, b{b}
-		{ }
+		: v{i}, f{f}, c{c}, b{b}
+		{
+		}
 		
 		std::vector<int> v;
 		float f;
@@ -145,15 +125,17 @@ BOOST_AUTO_TEST_CASE(ConstructionVariadic)
 	};
 	
 	optional<std::pair<int, int>> opt1{in_place, 1, 2};
-	BOOST_CHECK_EQUAL(opt1->first, 1);
-	BOOST_CHECK_EQUAL(opt1->second, 2);
+	EXPECT_THAT(opt1->first, Eq(1));
+	EXPECT_THAT(opt1->second, Eq(2));
 	
 	optional<VariadicTest> opt2{in_place, {1, 2, 3, 4}, 4.12f, 'a', true};
-	auto init = {1, 2, 3, 4};
-	BOOST_CHECK_EQUAL_COLLECTIONS(init.begin(), init.end(), opt2->v.begin(), opt2->v.end());
+	EXPECT_THAT(opt2->v, ElementsAreArray({1, 2, 3, 4}));
+	EXPECT_THAT(opt2->f, FloatEq(4.12f));
+	EXPECT_THAT(opt2->c, Eq('a'));
+	EXPECT_THAT(opt2->b, Eq(true));
 }
 
-BOOST_AUTO_TEST_CASE(Constexpr)
+TEST(Optional, Constexpr)
 {
 	constexpr auto string = "abcdefgh";
 	constexpr optional<int> a{32};
@@ -161,16 +143,16 @@ BOOST_AUTO_TEST_CASE(Constexpr)
 	constexpr optional<float> c{3.14f};
 	constexpr optional<int> d{};
 	
-	BOOST_CHECK_EQUAL(*a, 32);
-	BOOST_CHECK_EQUAL(*b, string);
-	BOOST_CHECK_EQUAL(*c, 3.14f);
-	BOOST_CHECK(!d);
+	EXPECT_THAT(*a, Eq(32));
+	EXPECT_THAT(*b, Eq(string));
+	EXPECT_THAT(*c, FloatEq(3.14f));
+	EXPECT_FALSE(d);
 	
 	constexpr int i = *a;
 	constexpr int j = a.value();
 	
-	BOOST_CHECK_EQUAL(i, *a);
-	BOOST_CHECK_EQUAL(j, *a);
+	EXPECT_THAT(i, Eq(*a));
+	EXPECT_THAT(j, Eq(*a));
 	
 	struct Literal { };
 	
@@ -179,134 +161,134 @@ BOOST_AUTO_TEST_CASE(Constexpr)
 	static_assert(std::is_literal_type<optional<Literal>>::value, "Type error");
 }
 
-BOOST_AUTO_TEST_CASE(Assignment)
+TEST(Optional, Assignment)
 {
 	{
 		optional<int> a;
 		optional<int> b;
 
 		a = b;
-		BOOST_CHECK(!a);
+		EXPECT_FALSE(a);
 	}
 	{
 		optional<int> a{1};
 		optional<int> b;
 		
 		a = b;
-		BOOST_CHECK(!a);
+		EXPECT_FALSE(a);
 	}
 	{
 		optional<int> a{};
 		optional<int> b{1};
 		
 		a = b;
-		BOOST_CHECK(a);
-		BOOST_CHECK_EQUAL(*a, 1);
+		EXPECT_TRUE(a);
+		EXPECT_THAT(*a, Eq(1));
 	}
 	{
 		optional<int> a{1};
 		optional<int> b{2};
 		
 		a = b;
-		BOOST_CHECK_EQUAL(*a, 2);
+		EXPECT_THAT(*a, Eq(2));
 	}
 	{
 		optional<int> a{1};
 		
 		a = nullopt;
-		BOOST_CHECK(!a);
+		EXPECT_FALSE(a);
 	}
 	{
 		optional<int> a{};
 		
 		a = 1;
-		BOOST_CHECK(a);
-		BOOST_CHECK_EQUAL(*a, 1);
+		EXPECT_TRUE(a);
+		EXPECT_THAT(*a, Eq(1));
 	}
 	{
 		optional<std::string> a{"a"};
 		optional<std::string> b{"b"};
 		
 		a = std::move(b);
-		BOOST_CHECK_EQUAL(*a, "b");
-		BOOST_CHECK_EQUAL(*b, std::string{});
+		EXPECT_THAT(*a, Eq("b"));
+		EXPECT_THAT(*b, Eq(std::string{}));
 	}
 }
 
-BOOST_AUTO_TEST_CASE(Observers)
+TEST(Optional, Observers)
 {
 	{
 		optional<int> a;
-		BOOST_CHECK(!a);
-		BOOST_CHECK_THROW(a.value(), bad_optional_access);
-		BOOST_CHECK_NO_THROW(a.value_or(1));
-		BOOST_CHECK(!a); // value_or must not change engaged state
-		BOOST_CHECK_EQUAL(a.value_or(1), 1);
+		EXPECT_FALSE(a);
+		EXPECT_THROW(a.value(), bad_optional_access);
+		EXPECT_NO_THROW(a.value_or(1));
+		EXPECT_FALSE(a); // value_or must not change engaged state
+		EXPECT_THAT(a.value_or(1), Eq(1));
 	}
 	{
 		optional<std::string> a{"1234"};
-		BOOST_CHECK(a);
-		BOOST_CHECK_NO_THROW(a.value());
-		BOOST_CHECK_EQUAL(a.value(), "1234");
-		BOOST_CHECK_EQUAL(*a, "1234");
-		BOOST_CHECK_EQUAL(a->size(), 4);
-		BOOST_CHECK_EQUAL(a.value_or("12345"), "1234");
+		EXPECT_TRUE(a);
+		EXPECT_NO_THROW(a.value());
+		EXPECT_THAT(a.value(), Eq("1234"));
+		EXPECT_THAT(*a, Eq("1234"));
+		EXPECT_THAT(a->size(), Eq(4));
+		EXPECT_THAT(a.value_or("12345"), Eq("1234"));
 	}
 	{
 		optional<int> a{1};
 		*a = 2;
-		BOOST_CHECK_EQUAL(*a, 2);
+		EXPECT_THAT(*a, Eq(2));
 	}
 	{
 		optional<std::string> a{"abc"};
 		a->clear();
-		BOOST_CHECK_EQUAL(*a, std::string{});
+		EXPECT_THAT(*a, Eq(std::string{}));
 	}
 }
 
-BOOST_AUTO_TEST_CASE(Modifiers)
+TEST(Optional, Modifiers)
 {
 	{
 		optional<std::string> a;
 		optional<std::string> b;
 		a.swap(b);
-		BOOST_CHECK(!a);
-		BOOST_CHECK(!b);
+		EXPECT_FALSE(a);
+		EXPECT_FALSE(b);
 	}
 	{
 		optional<std::string> a;
 		optional<std::string> b{"b"};
 		a.swap(b);
-		BOOST_CHECK_EQUAL(*a, "b");
-		BOOST_CHECK(!b);
+		EXPECT_THAT(*a, Eq("b"));
+		EXPECT_FALSE(b);
 	}
 	{
 		optional<std::string> a{"a"};
 		optional<std::string> b;
 		a.swap(b);
-		BOOST_CHECK_EQUAL(*b, "a");
-		BOOST_CHECK(!a);
+		EXPECT_THAT(*b, Eq("a"));
+		EXPECT_FALSE(a);
 	}
 	{
 		optional<std::string> a{"a"};
 		optional<std::string> b{"b"};
 		a.swap(b);
-		BOOST_CHECK_EQUAL(*a, "b");
-		BOOST_CHECK_EQUAL(*b, "a");
+		EXPECT_THAT(*a, Eq("b"));
+		EXPECT_THAT(*b, Eq("a"));
 	}
 	{
 		optional<std::string> a;
 		a.emplace("b");
-		BOOST_CHECK_EQUAL(*a, "b");
+		EXPECT_THAT(*a, Eq("b"));
 	}
 	{
 		optional<std::string> a{"a"};
 		a.emplace("b");
-		BOOST_CHECK_EQUAL(*a, "b");
+		EXPECT_THAT(*a, Eq("b"));
 	}
 }
 
-BOOST_AUTO_TEST_CASE(ValueSpecialMembers)
+TEST(Optional, ValueSpecialMembers)
 {
 	{
 		optional<DontDestroy> a;
@@ -320,14 +302,14 @@ BOOST_AUTO_TEST_CASE(ValueSpecialMembers)
 			optional<Counter> a{in_place, c}; // value ctor
 			// value dtor
 		}
-		BOOST_CHECK((c == std::vector<int>{1, 0, 0, 1, 0, 0}));
+		EXPECT_THAT(c, Eq(std::vector<int>{1, 0, 0, 1, 0, 0}));
 	}
 	{
 		Counters c;
 		{
 			optional<Counter> a;
 		}
-		BOOST_CHECK((c == std::vector<int>{0, 0, 0, 0, 0, 0}));
+		EXPECT_THAT(c, Eq(std::vector<int>{0, 0, 0, 0, 0, 0}));
 	}
 	{
 		Counters c;
@@ -335,7 +317,7 @@ BOOST_AUTO_TEST_CASE(ValueSpecialMembers)
 		optional<Counter> b;
 		
 		a = b; // value dtor
-		BOOST_CHECK((c == std::vector<int>{1, 0, 0, 1, 0, 0}));
+		EXPECT_THAT(c, Eq(std::vector<int>{1, 0, 0, 1, 0, 0}));
 	}
 	{
 		Counters c;
@@ -343,7 +325,7 @@ BOOST_AUTO_TEST_CASE(ValueSpecialMembers)
 		optional<Counter> b{in_place, c}; // value ctor
 		
 		a = b; // value copy ctor
-		BOOST_CHECK((c == std::vector<int>{1, 1, 0, 0, 0, 0}));
+		EXPECT_THAT(c, Eq(std::vector<int>{1, 1, 0, 0, 0, 0}));
 	}
 	{
 		Counters c;
@@ -351,7 +333,7 @@ BOOST_AUTO_TEST_CASE(ValueSpecialMembers)
 		optional<Counter> b{in_place, c}; // value ctor
 		
 		a = std::move(b); // value move ctor
-		BOOST_CHECK((c == std::vector<int>{1, 0, 1, 0, 0, 0}));
+		EXPECT_THAT(c, Eq(std::vector<int>{1, 0, 1, 0, 0, 0}));
 	}
 	{
 		Counters c;
@@ -359,7 +341,7 @@ BOOST_AUTO_TEST_CASE(ValueSpecialMembers)
 		optional<Counter> b{in_place, c}; // value ctor
 		
 		a = b; // value assign
-		BOOST_CHECK((c == std::vector<int>{2, 0, 0, 0, 1, 0}));
+		EXPECT_THAT(c, Eq(std::vector<int>{2, 0, 0, 0, 1, 0}));
 	}
 	{
 		Counters c;
@@ -367,7 +349,7 @@ BOOST_AUTO_TEST_CASE(ValueSpecialMembers)
 		optional<Counter> b{in_place, c}; // value ctor
 		
 		a = std::move(b); // value move
-		BOOST_CHECK((c == std::vector<int>{2, 0, 0, 0, 0, 1}));
+		EXPECT_THAT(c, Eq(std::vector<int>{2, 0, 0, 0, 0, 1}));
 	}
 	{
 		optional<DontDestroy> a{};
@@ -379,20 +361,20 @@ BOOST_AUTO_TEST_CASE(ValueSpecialMembers)
 		optional<Counter> a{in_place, c}; // value ctor
 		
 		a = nullopt; // value dtor
-		BOOST_CHECK((c == std::vector<int>{1, 0, 0, 1, 0, 0}));
+		EXPECT_THAT(c, Eq(std::vector<int>{1, 0, 0, 1, 0, 0}));
 	}
 	{
 		Counters c;
 		Counter counter{c};
 		optional<Counter> a{counter}; // value copy ctor
 		
-		BOOST_CHECK((c == std::vector<int>{1, 1, 0, 0, 0, 0}));
+		EXPECT_THAT(c, Eq(std::vector<int>{1, 1, 0, 0, 0, 0}));
 	}
 	{
 		Counters c;
 		optional<Counter> a{Counter{c}}; // value move ctor, temp dtor
 		
-		BOOST_CHECK((c == std::vector<int>{1, 0, 1, 1, 0, 0}));
+		EXPECT_THAT(c, Eq(std::vector<int>{1, 0, 1, 1, 0, 0}));
 	}
 	{
 		optional<DontDestroy> a;
@@ -406,7 +388,7 @@ BOOST_AUTO_TEST_CASE(ValueSpecialMembers)
 		optional<Counter> b;
 		
 		swap(a, b); // value move ctor, value dtor
-		BOOST_CHECK((c == std::vector<int>{1, 0, 1, 1, 0, 0}));
+		EXPECT_THAT(c, Eq(std::vector<int>{1, 0, 1, 1, 0, 0}));
 	}
 	{
 		Counters c;
@@ -414,7 +396,7 @@ BOOST_AUTO_TEST_CASE(ValueSpecialMembers)
 		optional<Counter> b{in_place, c}; // value ctor
 		
 		swap(a, b); // value move ctor, value dtor
-		BOOST_CHECK((c == std::vector<int>{1, 0, 1, 1, 0, 0}));
+		EXPECT_THAT(c, Eq(std::vector<int>{1, 0, 1, 1, 0, 0}));
 	}
 	{
 		Counters c;
@@ -422,113 +404,111 @@ BOOST_AUTO_TEST_CASE(ValueSpecialMembers)
 		optional<Counter> b{in_place, c}; // value ctor
 		
 		swap(a, b); // value swap implementation: 1x value move ctor, 2x value move, 1x value dtor
-		BOOST_CHECK((c == std::vector<int>{2, 0, 1, 1, 0, 2}));
+		EXPECT_THAT(c, Eq(std::vector<int>{2, 0, 1, 1, 0, 2}));
 	}
 	{
 		Counters c;
 		optional<Counter> a{};
 		
 		a.emplace(c); // value ctor
-		BOOST_CHECK((c == std::vector<int>{1, 0, 0, 0, 0, 0}));
+		EXPECT_THAT(c, Eq(std::vector<int>{1, 0, 0, 0, 0, 0}));
 	}
 	{
 		Counters c;
 		optional<Counter> a{in_place, c}; // value ctor
 		
 		a.emplace(c); // value dtor, value ctor
-		BOOST_CHECK((c == std::vector<int>{2, 0, 0, 1, 0, 0}));
+		EXPECT_THAT(c, Eq(std::vector<int>{2, 0, 0, 1, 0, 0}));
 	}
 	{
 		Counters c;
 		optional<Counter> a{in_place, c}; // value ctor
 		
 		Counter b{a.value()}; // value copy ctor
-		BOOST_CHECK((c == std::vector<int>{1, 1, 0, 0, 0, 0}));
+		EXPECT_THAT(c, Eq(std::vector<int>{1, 1, 0, 0, 0, 0}));
 	}
 }
 
-BOOST_AUTO_TEST_CASE(CompareOperators)
+TEST(Optional, CompareOperators)
 {
 	{
 		optional<std::string> a;
 		optional<std::string> b;
-		BOOST_CHECK(a == b);
-		BOOST_CHECK(!(a < b));
+		EXPECT_THAT(a, Eq(b));
+		EXPECT_THAT(a, Not(Lt(b)));
 	}
 	{
 		optional<std::string> a{"a"};
 		optional<std::string> b{"b"};
-		BOOST_CHECK(!(a == b));
-		BOOST_CHECK(!(b < a));
-		BOOST_CHECK(a < b);
+		EXPECT_THAT(a, Not(Eq(b)));
+		EXPECT_THAT(b, Not(Lt(a)));
+		EXPECT_THAT(a, Lt(b));
 	}
 	{
 		optional<std::string> a{"a"};
 		optional<std::string> b{"a"};
-		BOOST_CHECK(a == b);
-		BOOST_CHECK(!(a < b));
-		BOOST_CHECK(!(b < a));
+		EXPECT_THAT(a, Eq(b));
+		EXPECT_THAT(a, Not(Lt(b)));
+		EXPECT_THAT(b, Not(Lt(a)));
 	}
 	{
 		optional<std::string> a;
 		optional<std::string> b{"b"};
-		BOOST_CHECK(!(a == b));
-		BOOST_CHECK(a < b);
-		BOOST_CHECK(!(b < a));
+		EXPECT_THAT(a, Not(Eq(b)));
+		EXPECT_THAT(a, Lt(b));
+		EXPECT_THAT(b, Not(Lt(a)));
 	}
 	{
 		optional<std::string> a{"a"};
 		optional<std::string> b;
-		BOOST_CHECK(!(a == b));
-		BOOST_CHECK(!(a < b));
-		BOOST_CHECK(b < a);
+		EXPECT_THAT(a, Not(Eq(b)));
+		EXPECT_THAT(a, Not(Lt(b)));
+		EXPECT_THAT(b, Lt(a));
 	}
 	{
 		optional<std::string> a{"a"};
-		BOOST_CHECK(!(a == nullopt));
-		BOOST_CHECK(!(nullopt == a));
-		BOOST_CHECK(!(a < nullopt));
-		BOOST_CHECK(nullopt < a);
+		EXPECT_THAT(a, Not(Eq(nullopt)));
+		EXPECT_THAT(nullopt, Not(Eq(a)));
+		EXPECT_THAT(a, Not(Lt(nullopt)));
+		EXPECT_THAT(nullopt, Lt(a));
 	}
 	{
 		optional<std::string> a{"a"};
 		std::string b{"b"};
-		BOOST_CHECK(!(a == b));
-		BOOST_CHECK(!(b == a));
-		BOOST_CHECK(a < b);
+		EXPECT_THAT(a, Not(Eq(b)));
+		EXPECT_THAT(b, Not(Eq(a)));
+		EXPECT_THAT(a, Lt(b));
 	}
 	{
 		optional<std::string> a;
 		std::string b{"b"};
-		BOOST_CHECK(!(a == b));
-		BOOST_CHECK(!(b == a));
-		BOOST_CHECK(a < b);
+		EXPECT_THAT(a, Not(Eq(b)));
+		EXPECT_THAT(b, Not(Eq(a)));
+		EXPECT_THAT(a, Lt(b));
 	}
 }
 
-BOOST_AUTO_TEST_CASE(Hashing)
+TEST(Optional, Hashing)
 {
 	std::string a{"1234567890"};
 	std::hash<std::string> hs;
 	std::hash<optional<std::string>> ho;
 
-	BOOST_CHECK_EQUAL(hs(a), ho(optional<std::string>{in_place, a}));
-	BOOST_CHECK_NE(hs(a), ho({}));
-	BOOST_CHECK_NE(hs(a), ho({nullopt}));
-	BOOST_CHECK_EQUAL(ho({}), ho({}));
+	EXPECT_THAT(hs(a), Eq(ho(optional<std::string>{in_place, a})));
+	EXPECT_THAT(hs(a), Ne(ho({})));
+	EXPECT_THAT(hs(a), Ne(ho({nullopt})));
+	EXPECT_THAT(ho({}), Eq(ho({})));
 }
 
-BOOST_AUTO_TEST_CASE(MakeOptional)
+TEST(Optional, MakeOptional)
 {
 	auto a = make_optional(std::string{"1234567890"});
 	static_assert(std::is_same<decltype(a), optional<std::string>>::value, "Type mismatch");
-	BOOST_CHECK_EQUAL(*a, "1234567890");
+	EXPECT_THAT(*a, Eq("1234567890"));
 	
 	int i = 1;
 	int& r = i;
 	auto b = make_optional(r);
 	static_assert(std::is_same<decltype(b), optional<int>>::value, "Type mismatch");
-	BOOST_CHECK_EQUAL(*b, i);
+	EXPECT_THAT(*b, Eq(i));
 }
-
-BOOST_AUTO_TEST_SUITE_END()

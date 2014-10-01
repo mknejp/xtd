@@ -1,233 +1,270 @@
 /*
- Copyright 2013 Miro Knejp
+ Copyright 2014 Miro Knejp
  
  See the accompanied LICENSE file for licensing details.
  */
 
 /**
  \file
- Implementation of 20.6 [optional] in N3690.
- http://isocpp.org/files/papers/N3690.pdf
+ Implementation of the `optional` class template in the [*library fundamentals TS* N4032](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4023.html#optional ) §5 [optional].
  
  \author Miro Knejp
  */
 
-#ifndef XTD_xtd_optional_147e1f97_b281_4728_83af_ad21b7e24056
-#define XTD_xtd_optional_147e1f97_b281_4728_83af_ad21b7e24056
+#pragma once
 
-#include <xtd/utility>
 #include <cassert>
 #include <initializer_list>
 #include <functional> // for hash<> and less<>
 #include <memory>
 #include <stdexcept>
+#include <type_traits>
 
 namespace xtd
 {
+	/**
+	 Disengaged state indicator
+	 
+	 \relates xtd::optional
+	 */
+	constexpr struct nullopt_t { } nullopt{};
+	/**
+	 In-place construction
+	 
+	 \relates xtd::optional
+	 */
+	constexpr struct in_place_t { } in_place{};
+	
+	/// Signals value access into a disengaged optional
+	class bad_optional_access : std::logic_error
+	{
+	public:
+		using logic_error::logic_error;
+	};
+	
+	template<class T>
+	class optional;
+	
+	namespace detail
+	{
+		namespace optional
+		{
+			// Helper object storing the value and running its destructor only if T is not TriviallyDestructible
+			template<class T, bool = std::is_trivially_destructible<T>::value>
+			class ValueStorageHolder;
 
-/**
- In-place construction [optional.inplace]
- 
- \relates xtd::optional
- */
-	constexpr struct nullopt_t { private: nullopt_t() = delete; } nullopt = {};
-/**
- Disengaged state indicator [optional.nullopt]
- 
- \relates xtd::optional
- */
-constexpr struct in_place_t { } in_place = {};
-
-/// Class \p bad_optional_access [nullopt.bad_optional_access]
-class bad_optional_access : std::logic_error
-{
-public:
-	explicit bad_optional_access(const std::string& what_arg) : logic_error(what_arg) { }
-	explicit bad_optional_access(const char* what_arg) : logic_error(what_arg) { }
-};
-
-namespace detail {
-namespace optional
-{
-
-// circumvent swap() declaration in class optional for ADL
-template<class T>
-inline void doswap(T& a, T& b)
-	noexcept(noexcept(swap(std::declval<T&>(), std::declval<T&>())))
-{
-	swap(a, b);
+			// Manages a value and its associated engaged/disanged status
+			template<class T>
+			class ValueStorage;
+		}
+	}
 }
 
-struct Empty { };
-
-// Storage object taking care of construction and destruction of a value.
-template<class T, bool = std::is_trivially_destructible<T>::value>
-struct ValueStorage
-{
-	constexpr ValueStorage() noexcept : dummy() { };
-	ValueStorage(const ValueStorage& rhs) : engaged(rhs.engaged)
-	{
-		if(engaged)
-			new (&value) T(rhs.value);
-	}
-	ValueStorage(ValueStorage&& rhs) noexcept(std::is_nothrow_move_constructible<T>::value)
-		: engaged(rhs.engaged)
-	{
-		if(engaged)
-			new (&value) T(xtd::move(rhs.value));
-	}
-	constexpr ValueStorage(const T& v)
-		: engaged(true), value(v)
-	{ }
-	constexpr ValueStorage(T&& v) noexcept(std::is_nothrow_move_constructible<T>::value)
-		: engaged(true), value(xtd::move(v))
-	{ }
-	template<class... Args>
-	constexpr ValueStorage(Args&&... args)
-		: engaged(true), value(xtd::forward<Args>(args)...)
-	{ }
-	
-	// This partial specialization assumes T is trivially destructible
-	~ValueStorage() = default;
-
-	template<class... Args>
-	void construct(Args&&... args)
-	{
-		new (&value) T(xtd::forward<Args>(args)...);
-	}
-	
-	void destroy()
-	{ }
-	
-	// Use an unrestricted union so we can skip T's dtor
-	union
-	{
-		T value;
-		Empty dummy;
-	};
-	bool engaged = false;
-};
-
-// Specialization for types which are not literal and thus don't have a trivial destructor.
+// Specialization for TriviallyDestructible types where we don't need to run T's dtor at all
 template<class T>
-struct ValueStorage<T, false>
+class xtd::detail::optional::ValueStorageHolder<T, true>
 {
-	constexpr ValueStorage() noexcept : dummy() { };
-	ValueStorage(const ValueStorage& rhs) : engaged(rhs.engaged)
+protected:
+	constexpr ValueStorageHolder() : _engaged(false)
 	{
-		if(engaged)
-			new (&value) T(rhs.value);
 	}
-	ValueStorage(ValueStorage&& rhs) noexcept(std::is_nothrow_move_constructible<T>::value)
-		: engaged(rhs.engaged)
-	{
-		if(engaged)
-			new (&value) T(xtd::move(rhs.value));
-	}
-	constexpr ValueStorage(const T& v)
-		: engaged(true), value(v)
-	{ }
-	constexpr ValueStorage(T&& v) noexcept(std::is_nothrow_move_constructible<T>::value)
-		: engaged(true), value(xtd::move(v))
-	{ }
 	template<class... Args>
-	constexpr ValueStorage(Args&&... args)
-		: engaged(true), value(xtd::forward<Args>(args)...)
-	{ }
-	
-	// This partial specialization assumes T is not trivially destructible
-	~ValueStorage()
+	constexpr ValueStorageHolder(Args&&... args) : _engaged(true), _value(std::forward<Args>(args)...)
+	{
+	}
+	template<class... Args>
+	ValueStorageHolder(in_place_t, bool engaged, Args&&... args) : _engaged(engaged)
 	{
 		if(engaged)
-			destroy();
+			new (std::addressof(_value)) T(std::forward<Args>(args)...);
 	}
 	
-	template<class... Args>
-	void construct(Args&&... args)
-	{
-		new (&value) T(xtd::forward<Args>(args)...);
-	}
-
-	void destroy()
-	{
-		value.~T();
-	}
-	
-	// Use an unrestricted union so we can skip T's dtor
 	union
 	{
-		T value;
-		Empty dummy;
+		T _value;
 	};
-	bool engaged = false;
+	bool _engaged;
 };
 
-}} // namespace detail::optional
+// Specialization for not TriviallyDestructible types where we have to run the dtor if engaged
+template<class T>
+class xtd::detail::optional::ValueStorageHolder<T, false>
+{
+protected:
+	constexpr ValueStorageHolder() : _engaged(false)
+	{
+	}
+	template<class... Args>
+	constexpr ValueStorageHolder(Args&&... args) : _engaged(true), _value(std::forward<Args>(args)...)
+	{
+	}
+	template<class... Args>
+	ValueStorageHolder(in_place_t, bool engaged, Args&&... args) : _engaged(engaged)
+	{
+		if(engaged)
+			new (std::addressof(_value)) T(std::forward<Args>(args)...);
+	}
+	~ValueStorageHolder()
+	{
+		if(_engaged)
+			_value.T::~T();
+	}
+	
+	union
+	{
+		T _value;
+	};
+	bool _engaged;
+};
+
+template<class T>
+class xtd::detail::optional::ValueStorage : private ValueStorageHolder<T>
+{
+public:
+	constexpr ValueStorage() = default;
+	ValueStorage(const ValueStorage& other) noexcept(std::is_nothrow_copy_constructible<T>::value)
+	: ValueStorageHolder<T>(in_place, other._engaged, other._value)
+	{
+	}
+	ValueStorage(ValueStorage&& other) noexcept(std::is_nothrow_move_constructible<T>::value)
+	: ValueStorageHolder<T>(in_place, other._engaged, std::move(other._value))
+	{
+	}
+	constexpr ValueStorage(const T& v) noexcept(std::is_nothrow_copy_constructible<T>::value)
+	: ValueStorageHolder<T>(v)
+	{
+	}
+	constexpr ValueStorage(T&& v) noexcept(std::is_nothrow_move_constructible<T>::value)
+	: ValueStorageHolder<T>(std::move(v))
+	{
+	}
+	template<class... Args>
+	constexpr ValueStorage(Args&&... args) noexcept(std::is_nothrow_constructible<T, Args&&...>::value)
+	: ValueStorageHolder<T>(std::forward<Args>(args)...)
+	{
+	}
+	template<class... Args>
+	void construct(Args&&... args) noexcept(std::is_nothrow_constructible<T, Args&&...>::value)
+	{
+		new (std::addressof(this->_value)) T(std::forward<Args>(args)...);
+		this->_engaged = true;
+	}
+	
+	void destroy() noexcept
+	{
+		this->_engaged = false;
+		this->_value.T::~T();
+	}
+	
+	T& value() { return this->_value; }
+	constexpr const T& value() const { return this->_value; }
+	
+	constexpr bool engaged() const { return this->_engaged; }
+};
 
 /**
- Utility class for storing uninitialized or initialized values [optional]
+ Utility class for storing uninitialized or initialized values
  
  An optional<T> is an object that contains the storage for another object of type T and manages the lifetime of this contained object. The contained object may be initialized after the optional object has been initialized, and may be destroyed before the optional object has been destroyed. The initialization state of the contained object is tracked by the optional object.
  
- An optional<T> is called \i disengaged if the stored value is not initialized. Whenever an optional<T> transitions form engaged to disengaged the stored object's destructor is invoked. When the optional<T> object is destroyed the stored object's destructor is only invoked if the optional<T> object is engaged.
+ An optional<T> is called *disengaged* if the stored value is not initialized. Whenever an optional<T> transitions form engaged to disengaged the stored object's destructor is invoked. When the optional<T> object is destroyed the stored object's destructor is only invoked if the optional<T> object is engaged.
  
- \tparam T The type of the stored object. Must be destructible, not a reference or (possibly cv-qualified) nullopt_t or in_place_t.
+ \tparam T The type of the stored object. Must be destructible, not a reference or (possibly *cv-qualified*) nullopt_t or in_place_t.
  */
 template<class T>
-class optional
+class xtd::optional
 {
 	static_assert(!std::is_reference<T>::value, "xtd::optional cannot store references.");
 	static_assert(std::is_destructible<T>::value, "xtd::optional can only store destructible values.");
-	static_assert(!std::is_same<xtd::decay_t<T>, nullopt_t>::value, "xtd::optional cannot store nullopt_t.");
-	static_assert(!std::is_same<xtd::decay_t<T>, in_place_t>::value, "xtd::optional cannot store in_place_t.");
+	static_assert(!std::is_same<std::decay_t<T>, nullopt_t>::value, "xtd::optional cannot store xtd::nullopt_t.");
+	static_assert(!std::is_same<std::decay_t<T>, in_place_t>::value, "xtd::optional cannot store xtd::in_place_t.");
 	
+	static constexpr bool swap_is_noexcept()
+	{
+		using std::swap;
+		return noexcept(swap(std::declval<T&>(), std::declval<T&>()));
+	}
+
 public:
-	/// \name Contructors [optional.object.ctor]
+	/// \name Contructors
 	//@{
 	
-	/// Construct a disengaged optional object.
-	constexpr optional() noexcept = default;
-	/// Construct a disengaged optional object.
-	constexpr optional(nullopt_t) noexcept { }
-	/// Copy-construct from another optional<T> object, copy-constructing the stored value if \p rhs is engaged.
-	optional(const optional& rhs) : _storage(rhs._storage)
-	{ }
-	/// Move-construct from another optional<T> object, move-constructing the stored value if \p rhs is engaged.
-	optional(optional&& rhs) noexcept(std::is_nothrow_move_constructible<T>::value) : _storage(xtd::move(rhs._storage))
-	{ }
-	/// Construct an engaged optional<T> by copying the given value.
-	constexpr optional(const T& v) : _storage(v)
-	{ }
-	/// Construct an engaged optional<T> by moving the given value.
-	constexpr optional(T&& v) : _storage(xtd::move(v))
-	{ }
-	/// Construct an engaged optional<T> by constructing the value in-place with the given arguments.
+	/// Construct a *disengaged* optional object.
+	constexpr optional() = default;
+	/// Construct a *disengaged* optional object.
+	constexpr optional(nullopt_t) noexcept
+	{
+	}
+	/**
+	 Copy-construct from another optional<T> object, copy-constructing the stored value if `rhs` is *engaged*.
+	 
+	 \throws Any exception thrown by the selected constructor of `T`.
+	 */
+	optional(const optional& other)
+	: _storage(other._storage)
+	{
+	}
+	/**
+	 Move-construct from another optional<T> object, move-constructing the stored value if `rhs` is *engaged*.
+	 
+	 \throws Any exception thrown by the selected constructor of `T`.
+	 */
+	optional(optional&& other) noexcept(std::is_nothrow_move_constructible<T>::value)
+	: _storage(std::move(other._storage))
+	{
+	}
+	/**
+	 Construct an *engaged* optional<T> by copying the given value.
+	 
+	 \throws Any exception thrown by the selected constructor of `T`.
+	 */
+	constexpr optional(const T& value)
+	: _storage(value)
+	{
+	}
+	/**
+	 Construct an *engaged* optional<T> by moving the given value.
+	 
+	 \throws Any exception thrown by the selected constructor of `T`.
+	 */
+	constexpr optional(T&& value)
+	: _storage(std::move(value))
+	{
+	}
+	/** 
+	 Construct an *engaged* optional<T> by constructing the value in-place with the given arguments.
+	 
+	 \throws Any exception thrown by the selected constructor of `T`.
+	 */
 	template<class... Args>
-	constexpr explicit optional(in_place_t, Args&&... args) : _storage(xtd::forward<Args>(args)...)
-	{ }
-	/// Construct an engaged optional<T> by constructing the value in-place with the given arguments.
-	template<
-		class U,
-		class... Args,
-		class = xtd::enable_if_t<std::is_constructible<T, std::initializer_list<U>&, Args&&...>::value>
+	constexpr explicit optional(in_place_t, Args&&... args)
+	: _storage(std::forward<Args>(args)...)
+	{
+	}
+	/**
+	 Construct an *engaged* optional<T> by constructing the value in-place with the given arguments.
+	 
+	 \throws Any exception thrown by the selected constructor of `T`.
+	 */
+	template
+	< class U
+	, class... Args
+	, class = std::enable_if_t<std::is_constructible<T, std::initializer_list<U>&, Args&&...>::value>
 	>
-	constexpr explicit optional(in_place_t, std::initializer_list<U> il, Args&&... args)
-		: _storage(il, xtd::forward<Args>(args)...)
-	{ }
+	constexpr explicit optional(in_place_t, std::initializer_list<U> ilist, Args&&... args)
+	: _storage(ilist, std::forward<Args>(args)...)
+	{
+	}
 	
-	//@}
-	/// \name Destructor [optional.object.dtor]
-	//@{
-	
-	/// Destroy the stored object if \p this is engaged.
+	/// Destroy the stored object if `this` is *engaged*.
 	~optional() = default;
 	
 	//@}
-	/// \name Assignment [optional.object.assign]
+	/// \name Assignment
 	//@{
 	
-	/// Disengage the object, destroying the contained value if \p this is engaged.
-	optional& operator = (nullopt_t) noexcept
+	/// Disengage the object, destroying the contained value if `this` is *engaged*.
+	optional& operator=(nullopt_t) noexcept
 	{
 		disengage();
 		return *this;
@@ -235,290 +272,424 @@ public:
 	/**
 	 Copy-assign from another optional<T> instance.
 	 
-	 If \p rhs is disengaged \p this becomes disengaged. Otherwise the stored value is either copy-assigned or copy-constructed from \p *rhs.
+	 If `rhs` is *disengaged* `this` becomes *disengaged*. Otherwise the stored value is either copy-assigned or copy-constructed from `*rhs`.
 	 */
-	optional& operator = (const optional& rhs)
+	optional& operator=(const optional& other)
 	{
-		assign(bool(rhs), *rhs);
+		if(*this && other)
+			**this = *other;
+		else if(*this && !other)
+			disengage();
+		else if(!*this && other)
+			engage(*other);
+
 		return *this;
 	}
 	/**
 	 Move-assign from another optional<T> instance.
 	 
-	 If \p rhs is disengaged \c this becomes disengaged. Otherwise the stored value is either move-assigned or move-constructed from \p *rhs.
+	 If `rhs` is *disengaged* `this` becomes *disengaged*. Otherwise the stored value is either move-assigned or move-constructed from `*rhs`.
 	 */
-	optional& operator = (optional&& rhs)
-		noexcept(std::is_nothrow_move_assignable<T>::value && std::is_nothrow_move_constructible<T>::value)
+	optional& operator=(optional&& other) noexcept(std::is_nothrow_move_assignable<T>::value && std::is_nothrow_move_constructible<T>::value)
 	{
-		assign(bool(rhs), xtd::move(*rhs));
+		if(*this && other)
+			**this = std::move(*other);
+		else if(*this && !other)
+			disengage();
+		else if(!*this && other)
+			engage(std::move(*other));
 		return *this;
 	}
 	/**
 	 Assign a value to the stored object.
 	 
-	 This overload is only available if \p T can be either constructed or assigned from a value of type \p U. Wehther the operation involves a copy or move operation depends on the exact type of the provided argument.
+	 If `this` is *disengaged* construct a new instance from `value`, otherwise assign `value` to the stored instance.
+	 Does not participate in overload resolution if `T` can be neither constructed nor assigned to from a value of type `U`.
 	 */
-	template<
-		class U,
-		class = xtd::enable_if_t<std::is_same<xtd::remove_reference_t<U>, T>::value>
+	template
+	< class U
+	, class = std::enable_if_t<std::is_same<std::decay_t<U>, T>::value>
 	>
-	optional& operator = (U&& v)
+	optional& operator=(U&& value)
 	{
 		if(*this)
-			*pointer() = xtd::forward<U>(v);
+			*pointer() = std::forward<U>(value);
 		else
-			engage(xtd::forward<U>(v));
+			engage(std::forward<U>(value));
 		return *this;
 	}
-	/// In-place construct the stored value with the provided arguments, destroying the current value if \p this is engaged.
+	/**
+	 In-place construct the stored value with the provided arguments, destroying the current value if `this` is *engaged*.
+	 
+	 \throw Any exception raised by `T`'s constructor. If an exception is thrown `this` is in *disengaged* state after the call and the previous value (if any) is lost.
+	 */
 	template<class... Args>
 	void emplace(Args&&... args)
 	{
 		disengage();
-		engage(xtd::forward<Args>(args)...);
+		engage(std::forward<Args>(args)...);
 	}
-	/// In-place construct the stored value with the provided arguments, destroying the current value if \p this is engaged.
-	template<
-		class U,
-		class... Args,
-		class = xtd::enable_if_t<std::is_constructible<T, std::initializer_list<U>&, Args&&...>::value>
+	/**
+	 In-place construct the stored value with the provided arguments, destroying the current value if `this` is *engaged*.
+	 
+	 \throw Any exception raised by `T`'s constructor. If an exception is thrown `this` is in *disengaged* state after the call and the previous value (if any) is lost.
+	 */
+	template
+	< class U
+	, class... Args
+	, class = std::enable_if_t<std::is_constructible<T, std::initializer_list<U>&, Args&&...>::value>
 	>
 	void emplace(std::initializer_list<U> ilist, Args&&... args)
 	{
 		disengage();
-		engage(ilist, xtd::forward<Args>(args)...);
+		engage(ilist, std::forward<Args>(args)...);
 	}
 	
 	//@}
-	/// \name Swap [optional.object.swap]
+	/// \name Swap
 	//@{
 	
-	/// Swap the contents and engaged state with another optional<T> obejct.
-	void swap(optional& rhs)
-		noexcept(std::is_nothrow_move_constructible<T>::value && noexcept(swap(std::declval<T&>(), std::declval<T&>())))
+	/// Swap the contents and *engaged* state with another optional<T> object.
+	void swap(optional& other) noexcept(std::is_nothrow_move_constructible<T>::value && swap_is_noexcept())
 	{
-		if(*this && rhs)
+		using std::swap;
+		if(*this && other)
+			swap(**this, *other);
+		else if(other && !*this)
 		{
-			detail::optional::doswap(**this, *rhs);
+			engage(std::move(*other));
+			other.disengage();
 		}
-		else if(rhs && !*this)
+		else if(*this && !other)
 		{
-			engage(xtd::move(*rhs));
-			rhs.disengageNoCheck();
-		}
-		else if(*this && !rhs)
-		{
-			rhs.engage(xtd::move(*(*this)));
-			disengageNoCheck();
+			other.engage(std::move(**this));
+			disengage();
 		}
 	}
 	
 	//@}
-	/// \name Observers [optional.object.observe]
+	/// \name Observers
 	//@{
 	
-	/// Access the the stored value if engaged, otherwise the behavior is undefined.
-	constexpr const T* operator -> () const { return assertEngaged(), &_storage.value; }
-	/// Access the the stored value if engaged, otherwise the behavior is undefined.
-	T* operator -> () { return assertEngaged(), &_storage.value; }
-	/// Access the the stored value if engaged, otherwise the behavior is undefined.
-	constexpr const T& operator * () const { return assertEngaged(), _storage.value; }
-	/// Access the the stored value if engaged, otherwise the behavior is undefined.
-	T& operator * () { return assertEngaged(), _storage.value; }
-
-	/// Returns true if \p this is engaged.
-	constexpr explicit operator bool () const noexcept { return _storage.engaged; }
+	/// Access the the stored value if *engaged*, otherwise the behavior is undefined.
+	constexpr const T* operator->() const
+	{
+		assert(*this && "optional is disengaged");
+		return pointer();
+	}
+	/// Access the the stored value if *engaged*, otherwise the behavior is undefined.
+	T* operator->()
+	{
+		assert(*this && "optional is disengaged");
+		return pointer();
+	}
+	/// Access the the stored value if *engaged*, otherwise the behavior is undefined.
+	constexpr const T& operator*() const
+	{
+		assert(*this && "optional is disengaged");
+		return *pointer();
+	}
+	/// Access the the stored value if *engaged*, otherwise the behavior is undefined.
+	T& operator*()
+	{
+		assert(*this && "optional is disengaged");
+		return *pointer();
+	}
+	
+	/// Returns true if `this` is *engaged*.
+	constexpr explicit operator bool() const noexcept
+	{
+		return _storage.engaged();
+	}
 	
 	/**
-	 Access the the stored value if engaged, otherwise throw bad_optional_access.
+	 Access the the stored value if *engaged*, otherwise throw bad_optional_access.
 	 
-	 \throws bad_optional_access if \p this is disengaged.
+	 \throws bad_optional_access if `this` is *disengaged*.
 	 */
-	constexpr const T& value() const { return checkEngaged(), **this; }
+	constexpr const T& value() const
+	{
+		if(!*this)
+			throw bad_optional_access("optional is disengaged");
+		return **this;
+	}
 	/**
-	 Access the the stored value if engaged, otherwise throw bad_optional_access.
+	 Access the the stored value if *engaged*, otherwise throw bad_optional_access.
 	 
-	 \throws bad_optional_access if \p this is disengaged.
+	 \throws bad_optional_access if `this` is *disengaged*.
 	 */
-	T& value() { return checkEngaged(), **this; }
-
-	/// Access the the stored value if engaged, otherwise return the provided argument.
-	template<class U>
-	constexpr T value_or(U&& v) const& { return *this ? **this : static_cast<T>(xtd::forward<U>(v)); }
-	/// Access the the stored value if engaged, otherwise return the provided argument.
-	template<class U>
-	T value_or(U&& v) && { return *this ? xtd::move(**this) : static_cast<T>(xtd::forward<U>(v)); }
+	T& value()
+	{
+		if(!*this)
+			throw bad_optional_access("optional is disengaged");
+		return **this;
+	}
 	
+	/// Access the stored value if *engaged*, otherwise return the provided argument.
+	template<class U>
+	constexpr T value_or(U&& value) const&
+	{
+		return *this ? **this : static_cast<T>(std::forward<U>(value));
+	}
+	/// Access the stored value if *engaged*, otherwise return the provided argument.
+	template<class U>
+	T value_or(U&& value) &&
+	{
+		return *this ? std::move(**this) : static_cast<T>(std::forward<U>(value));
+	}
+		
 	//@}
 	
 private:
-	constexpr bool assertEngaged() const
-	{
-		return assert(*this && "xtd::optional is disengaged"), true;
-	}
-	constexpr bool checkEngaged() const
-	{
-		return *this ? true : throw bad_optional_access("xtd::optional is disengaged");
-	}
-	void disengageNoCheck()
-	{
-		_storage.destroy();
-		_storage.engaged = false;
-	}
 	void disengage()
 	{
 		if(*this)
-			disengageNoCheck();
-	}
-	template<class U>
-	void assign(bool otherEngaged, U&& u)
-	{
-		if(*this && !otherEngaged)
-			disengageNoCheck();
-		else if(otherEngaged)
-		{
-			if(*this)
-				*pointer() = xtd::forward<U>(u);
-			else
-				engage(xtd::forward<U>(u));
-		}
+			_storage.destroy();
 	}
 	template<class... Args>
 	void engage(Args&&... args)
 	{
-		_storage.construct(xtd::forward<Args>(args)...);
-		_storage.engaged = true;
+		assert(!*this && "constructing over already existing value");
+		_storage.construct(std::forward<Args>(args)...);
 	}
-	constexpr const T* pointer() const { return &_storage.value; }
-	T* pointer() { return &_storage.value; }
-
+	constexpr const T* pointer() const
+	{
+		return &_storage.value(); // TODO: how to detect overloaded operator& ?
+	}
+	T* pointer()
+	{
+		return &_storage.value(); // TODO: how to detect overloaded operator& ?
+	}
+	
 	detail::optional::ValueStorage<T> _storage;
 };
-
-/// \name Relational operators [optional.relops]
-/// \relates xtd::optional
-//@{
-
-/// True if either both optionals are disengaged or engaged and their values are equal (using <tt>operator ==</tt>).
-template<class T>
-constexpr inline bool operator == (const optional<T>& x, const optional<T>& y)
+	
+namespace xtd
 {
-	return bool(x) != bool(y) ? false : (!x || (x && *x == *y));
+	/// \name Relational operators
+	/// \relates xtd::optional
+	//@{
+
+	/// True if either both optionals are *disengaged* or *engaged* and their values are equal (using `operator==`).
+	template<class T>
+	constexpr bool operator==(const optional<T>& lhs, const optional<T>& rhs)
+	{
+		return bool(lhs) != bool(rhs) ? false : (bool(lhs) ? *lhs == *rhs : true);
+	}
+
+	template<class T>
+	constexpr bool operator!=(const optional<T>& lhs, const optional<T>& rhs)
+	{
+		return !(lhs == rhs);
+	}
+
+	/// True if both optionals are *engaged* and `lhs`'s value is less than `rhs`'s value (using `std::less<T>`) or if `lhs` is *disengaged* and `rhs` engaged.
+	template<class T>
+	constexpr bool operator<(const optional<T>& lhs, const optional<T>& rhs)
+	{
+		return !rhs ? false : (!lhs ? true : *lhs < *rhs);
+	}
+
+	template<class T>
+	constexpr bool operator>(const optional<T>& lhs, const optional<T>& rhs)
+	{
+		return rhs < lhs;
+	}
+
+	template<class T>
+	constexpr bool operator<=(const optional<T>& lhs, const optional<T>& rhs)
+	{
+		return !(rhs < lhs);
+	}
+
+	template<class T>
+	constexpr bool operator>=(const optional<T>& lhs, const optional<T>& rhs)
+	{
+		return !(lhs < rhs);
+	}
+	//@}
+	/// \name Comparison with `nullopt`
+	/// \relates xtd::optional
+	//@{
+
+	/// True if `opt` is *disengaged*.
+	template<class T>
+	constexpr bool operator==(const optional<T>& opt, nullopt_t) noexcept
+	{
+		return !opt;
+	}
+	/// True if `opt` is *disengaged*.
+	template<class T>
+	constexpr bool operator==(nullopt_t, const optional<T>& opt) noexcept
+	{
+		return !opt;
+	}
+	
+	/// True if `opt` is *engaged*.
+	template<class T>
+	constexpr bool operator!=(const optional<T>& opt, nullopt_t) noexcept
+	{
+		return bool(opt);
+	}
+	/// True if `opt` is *engaged*.
+	template<class T>
+	constexpr bool operator!=(nullopt_t, const optional<T>& opt) noexcept
+	{
+		return bool(opt);
+	}
+	
+	/// Always `false`.
+	template<class T>
+	constexpr bool operator<(const optional<T>& opt, nullopt_t) noexcept
+	{
+		return false;
+	}
+	/// True if `opt` is *engaged*.
+	template<class T>
+	constexpr bool operator<(nullopt_t, const optional<T>& opt) noexcept
+	{
+		return bool(opt);
+	}
+
+	/// True if `opt` is *disengaged*.
+	template<class T>
+	constexpr bool operator<=(const optional<T>& opt, nullopt_t) noexcept
+	{
+		return !opt;
+	}
+	/// Always `true`.
+	template<class T>
+	constexpr bool operator<=(nullopt_t, const optional<T>& opt) noexcept
+	{
+		return true;
+	}
+	
+	/// True if `opt` is *engaged*.
+	template<class T>
+	constexpr bool operator>(const optional<T>& opt, nullopt_t) noexcept
+	{
+		return bool(opt);
+	}
+	/// Always `false`.
+	template<class T>
+	constexpr bool operator>(nullopt_t, const optional<T>& opt) noexcept
+	{
+		return false;
+	}
+	
+	/// Always `true`.
+	template<class T>
+	constexpr bool operator>=(const optional<T>& opt, nullopt_t) noexcept
+	{
+		return true;
+	}
+	/// True if `opt` is *disengaged*.
+	template<class T>
+	constexpr bool operator>=(nullopt_t, const optional<T>& opt) noexcept
+	{
+		return !opt;
+	}
+	
+	//@}
+	/// \name Comparison with `T`
+	/// \relates xtd::optional
+	//@{
+
+	/// `true` if `opt` is *engaged* and `*opt == value`.
+	template<class T>
+	constexpr bool operator==(const optional<T>& opt, const T& value)
+	{
+		return bool(opt) ? *opt == value : false;
+	}
+	/// `true` if `opt` is *engaged* and `value == *opt`.
+	template<class T>
+	constexpr bool operator==(const T& value, const optional<T>& opt)
+	{
+		return bool(opt) ? value == *opt : false;
+	}
+
+	/// `true` if `opt` is *disengaged* or `!(value == *opt)`.
+	template<class T>
+	constexpr bool operator!=(const T& value, const optional<T>& opt)
+	{
+		return bool(opt) ? !(*opt == value) : true;
+	}
+	/// `true` if `opt` is *disengaged* or `!(*opt == value)`.
+	template<class T>
+	constexpr bool operator!=(const optional<T>& opt, const T& value)
+	{
+		return bool(opt) ? !(*opt == value) : true;
+	}
+
+	/// `true` if `opt` is *disengaged* or `*opt < value`.
+	template<class T>
+	constexpr bool operator<(const optional<T>& opt, const T& value)
+	{
+		return bool(opt) ? *opt < value : true;
+	}
+	/// `true` if `opt` is *disengaged* or `value < *opt`.
+	template<class T>
+	constexpr bool operator<(const T& value, const optional<T>& opt)
+	{
+		return bool(opt) ? value < *opt : true;
+	}
+
+	/// `true` if `opt` is *disengaged* or `value < *opt`.
+	template<class T>
+	constexpr bool operator>(const optional<T>& opt, const T& value)
+	{
+		return bool(opt) ? value < *opt : true;
+	}
+	/// `true` if `opt` is *disengaged* or `*opt < value`.
+	template<class T>
+	constexpr bool operator>(const T& value, const optional<T>& opt)
+	{
+		return bool(opt) ? *opt < value : true;
+	}
+	
+	//@}
+	/// \name Specialized algorithms
+	/// \relates xtd::optional
+	//@{
+
+	/// Specialization of the swap-algorithm for optional<T>
+	template<class T>
+	void swap(optional<T>& rhs, optional<T>& lhs) noexcept(noexcept(rhs.swap(lhs)))
+	{
+		rhs.swap(lhs);
+	}
+
+	/// Construct an optional<T> object by deducing `T` from the provided argument.
+	template<class T>
+	constexpr auto make_optional(T&& value)
+	{
+		return optional<std::decay_t<T>>{std::forward<T>(value)};
+	}
+
+	//@}
 }
-
-/// True if both optionals are engaged and \p x's value is less than \p y's value (using \p std::less<T>) or if \p x is disengaged and \p y engaged.
-template<class T>
-constexpr inline bool operator < (const optional<T>& x, const optional<T>& y)
-{
-	return !y ? false : (!x || std::less<T>{}(*x, *y));
-}
-
-//@}
-/// \name Comparison with \p nullopt [optional.nullops]
-/// \relates xtd::optional
-//@{
-
-/// True if \p x is disengaged.
-template<class T>
-constexpr inline bool operator == (const optional<T>& x, nullopt_t)
-{
-	return !x;
-}
-
-/// True if \p x is disengaged.
-template<class T>
-constexpr inline bool operator == (nullopt_t, const optional<T>& x)
-{
-	return !x;
-}
-
-/// Always false.
-template<class T>
-constexpr inline bool operator < (const optional<T>& x, nullopt_t)
-{
-	return false;
-}
-
-/// True if \p x is engaged.
-template<class T>
-constexpr inline bool operator < (nullopt_t, const optional<T>& x)
-{
-	return bool(x);
-}
-
-//@}
-/// \name Comparison with \p T [optional.comp_with_t]
-/// \relates xtd::optional
-//@{
-
-/// True if \p x is engaged and it's value equals \p v (using <tt>operator ==</tt>).
-template<class T>
-constexpr inline bool operator == (const optional<T>& x, const T& v)
-{
-	return x && *x == v;
-}
-
-/// True if \p opt is engaged and it's value equals \p v (using <tt>operator ==</tt>).
-template<class T>
-constexpr inline bool operator == (const T& v, const optional<T>& x)
-{
-	return x && (*x == v);
-}
-
-/// True if \p opt is disengaged or it's value is less than \p v (using \p std::less<T>).
-template<class T>
-constexpr inline bool operator < (const optional<T>& x, const T& v)
-{
-	return !x || (x && std::less<T>{}(*x, v));
-}
-
-//@}
-/// \name Specialized algorithms [optional.specalg]
-/// \relates xtd::optional
-//@{
-
-/// Specialization of the swap-algorithm for optional<T>
-template<class T>
-inline void swap(optional<T>& x, optional<T>& y) noexcept(noexcept(x.swap(y)))
-{
-	x.swap(y);
-}
-
-/// Construct an optional<T> object by deducing \p T from the provided argument(s).
-template<class T>
-constexpr inline optional<xtd::decay_t<T>> make_optional(T&& value)
-{
-	return {xtd::forward<T>(value)};
-}
-
-//@}
-
-} // namespace xtd
-
-//@}
-/// \name Hash support [optional.hash]
+	
+/// \name Hash support
 /// \relates xtd::optional
 //@{
 
 namespace std
 {
-
-/// Specialization of std::hash for optional<T>
-template<class Key>
-struct hash<xtd::optional<Key>>
-{
-	using result_type = typename hash<Key>::result_type;
-	using argument_type = Key;
 	
-	constexpr result_type operator () (const xtd::optional<Key>& k) const noexcept
+	/// Specialization of std::hash for optional<T>
+	template<class Key>
+	struct hash<xtd::optional<Key>>
 	{
-		// Empty optionals are equal
-		return k ? hash<Key>{}(*k) : result_type{};
-	}
-};
-
+		using result_type = typename hash<Key>::result_type;
+		using argument_type = xtd::optional<Key>;
+		
+		constexpr auto operator () (const xtd::optional<Key>& k) const
+		{
+			// Empty optionals are equivalent
+			return k ? hash<Key>{}(*k) : result_type{};
+		}
+	};
+	
 } // namesapce std
-
+	
 //@}
-
-#endif // XTD_xtd_optional_147e1f97_b281_4728_83af_ad21b7e24056
