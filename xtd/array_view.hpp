@@ -1,5 +1,5 @@
 /*
- Copyright 2013 Miro Knejp
+ Copyright 2014 Miro Knejp
  
  See the accompanied LICENSE file for licensing details.
  */
@@ -7,16 +7,15 @@
 /**
  \file
  Implements the array_view class, acting in the same way as string_view but for arbitrary contiguous memory regions, not just strings.
+ 
+ \author Miro Knejp
  */
 
-#ifndef XTD_xtd_array_view_hpp_287e85e5_e775_4c16_9cdf_a2445fe5a785
-#define XTD_xtd_array_view_hpp_287e85e5_e775_4c16_9cdf_a2445fe5a785
+#pragma once
 
-#include <array>
+#include <algorithm>
 #include <cassert>
 #include <iterator>
-#include <string>
-#include <vector>
 
 namespace xtd
 {
@@ -24,28 +23,14 @@ namespace xtd
 	class array_view;
 	
 	template<class T>
-	constexpr array_view<T> make_array_view(const T* start, std::size_t len)  noexcept;
+	constexpr auto make_array_view(T* start, std::size_t len)  noexcept;
 	template<class T>
-	constexpr array_view<T> make_array_view(const T* begin, const T* end)  noexcept;
+	constexpr auto make_array_view(T* begin, T* end)  noexcept;
 	template<class T, std::size_t N>
-	constexpr array_view<T> make_array_view(const T(&arr)[N])  noexcept;
-	template<class T, std::size_t N>
-	constexpr array_view<T> make_array_view(const std::array<T, N>& arr)  noexcept;
-	template<class T, class Alloc>
-	constexpr array_view<T> make_array_view(const std::vector<T, Alloc>& v)  noexcept;
-	template<class T, class Traits, class Alloc>
-	constexpr array_view<T> make_array_view(const std::basic_string<T, Traits, Alloc>& str)  noexcept;
-	
-	template<class T>
-	void swap(array_view<T>& lhs, array_view<T>& rhs) noexcept;
-	
-	template<class T>
-	constexpr bool operator== (array_view<T> lhs, array_view<T> rhs) noexcept;
-	template<class T>
-	constexpr bool operator!= (array_view<T> lhs, array_view<T> rhs) noexcept;
+	constexpr auto make_array_view(T (&arr)[N])  noexcept;
 }
 
-/// A utility class to encapsulate an non-owning, immutable range of elements in a contiguous range of memmory without requiring knowledge of what type of container it originated from.
+/// A utility class to encapsulate an non-owning range of elements in a contiguous range of memory without requiring knowledge of what type of container it originated from.
 template<class T>
 class xtd::array_view
 {
@@ -61,8 +46,8 @@ public:
 	using pointer = T*;
 	using const_pointer = const T*;
 	
-	using iterator = const T*; // array_view is non-modifying
-	using const_iterator = iterator;
+	using iterator = T*;
+	using const_iterator = const T*;
 	using reverse_iterator = std::reverse_iterator<iterator>;
 	using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
@@ -71,51 +56,32 @@ public:
 	//@{
 	
 	/// Construct an empty array_view.
-	array_view() = default;
+	array_view() noexcept = default;
 	/// Construct from a starting pointer and number of elements.
-	constexpr array_view(const T* start, size_type len) noexcept
-		: _data{start}, _len{len}
-	{ }
+	constexpr array_view(T* start, size_type len) noexcept
+	: _data(start)
+	, _len(len)
+	{
+	}
 	/**
-	 Construct from the pointer range <tt>[begin, end)</tt>.
-
-	 \p begin is not required to be less than \p end.
+	 Construct from the half-open pointer range `[first, last)`.
 	 */
-	constexpr array_view(const T* begin, const T* end) noexcept
-		: _data{end < begin ? end : begin}
-		, _len{end < begin ? begin - end : end - begin}
-	{ }
+	constexpr array_view(T* first, T* last) noexcept
+	: _data(first)
+	, _len(last - first)
+	{
+	}
 	/// Construct from an array
 	template<std::size_t N>
-	constexpr array_view(const T(&arr)[N]) noexcept : _data(&arr[0]), _len{N}
-	{ }
-	/// Construct from a std::array
-	template<std::size_t N>
-	constexpr array_view(const std::array<T, N>& arr) noexcept : _data(arr.data()), _len{arr.size()}
-	{ }
-	/**
-	 Construct from a std::vector.
-	 
-	 \warning The array_view becomes invalid as soon as the vector performs a reallocation!
-	 */
-	template<class Alloc>
-	constexpr array_view(const std::vector<T, Alloc>& v) noexcept : _data(v.data()), _len{v.size()}
-	{ }
-	/**
-	 Construct from a std::string.
-	 
-	 \warning The array_view becomes invalid as soon as the string performs a reallocation!
-	 */
-	template<class Traits, class Alloc>
-	constexpr array_view(const std::basic_string<T, Traits, Alloc>& str) noexcept : _data(str.data()), _len{str.size()}
-	{ }
+	constexpr array_view(T(&arr)[N]) noexcept
+	: _data(&arr[0])
+	, _len{N}
+	{
+	}
 	
-	constexpr array_view(const array_view& s) = default;
-	constexpr array_view(array_view&& s) = default;
+	constexpr array_view(const array_view& s) noexcept = default;
+	array_view& operator = (const array_view& s) noexcept = default;
 	
-	array_view& operator = (const array_view& s) = default;
-	array_view& operator = (array_view&& s) = default;
-		
 	//@}
 	/// \name Iterators
 	//@{
@@ -149,7 +115,8 @@ public:
 	/// Checks whether the string is empty
 	constexpr bool empty() const noexcept { return size() == 0; }
 	/// Check whether the array view points to NULL.
-	constexpr explicit operator bool () const noexcept { return _data != nullptr; }
+	constexpr explicit operator bool () const noexcept { return !empty(); }
+	
 	//@}
 	/// \name Element access
 	//@{
@@ -157,16 +124,20 @@ public:
 	/// Get a reference to the element at the specified position.
 	constexpr const T& operator[](size_type pos) const noexcept
 	{
-		return assertNonNull(), assertNonEmpty(), _data[pos];
+		assert(pos < size() && "xtd::array_view has length zero.");
+		assert(data() && "xtd::array_view points to NULL.");
+		return data()[pos];
 	}
 	/**
 	 Get a reference to the element at the specified position.
 	 
-	 \throws std::out_of_range if <tt>pos >= size()</tt>.
+	 \throws std::out_of_range if `pos >= size()`.
 	 */
 	constexpr const T& at(size_type pos) const
 	{
-		return assertNonNull(), checkPosition(pos), (*this)[pos];
+		if(pos >= size())
+			throw std::out_of_range{"xtd::array_view pos out of range."};
+		return (*this)[pos];
 	}
 	/// Get a reference to the first element.
 	constexpr const T& front() const noexcept
@@ -179,7 +150,7 @@ public:
 		return (*this)[size() - 1];
 	}
 	/// Get the underlying data pointer, which may be NULL.
-	constexpr const T* data() const noexcept
+	constexpr T* data() const noexcept
 	{
 		return _data;
 	}
@@ -195,81 +166,83 @@ public:
 	/// Swap with another string_view object.
 	void swap(array_view& other) noexcept
 	{
-		std::swap(_data, other._data);
-		std::swap(_len, other._len);
+		using std::swap;
+		swap(_data, other._data);
+		swap(_len, other._len);
 	}
 
 	//@}
 	
 private:
-	friend constexpr bool operator== (const array_view& lhs, const array_view& rhs) noexcept
-	{
-		return lhs._data == rhs._data && lhs._len == rhs._len;
-	}
-	
-	constexpr bool assertNonNull() const noexcept
-	{
-		return assert(_data && "xtd::array_view points to NULL."), true;
-	}
-	constexpr bool assertNonEmpty() const noexcept
-	{
-		return assert(_len > 0 && "xtd::array_view has length zero."), true;
-	}
-	constexpr bool checkPosition(size_type pos) const
-	{
-		return pos >= size() ? throw std::out_of_range{"xtd::array_view pos out of range."} : true;
-	}
-
-	const T* _data{nullptr};
+	T* _data{nullptr};
 	size_type _len{0};
 };
 
 template<class T>
-constexpr xtd::array_view<T> xtd::make_array_view(const T* start, std::size_t len) noexcept
+constexpr auto xtd::make_array_view(T* start, std::size_t len) noexcept
 {
-	return {start, len};
+	return array_view<std::remove_reference_t<T>>{start, len};
 }
 
 template<class T>
-constexpr xtd::array_view<T> xtd::make_array_view(const T* begin, const T* end) noexcept
+constexpr auto xtd::make_array_view(T* begin, T* end) noexcept
 {
-	return {begin, end};
+	return array_view<std::remove_reference_t<T>>{begin, end};
 }
 
 template<class T, std::size_t N>
-constexpr xtd::array_view<T> xtd::make_array_view(const T(&arr)[N]) noexcept
+constexpr auto xtd::make_array_view(T (&arr)[N]) noexcept
 {
-	return {&arr[0], N};
+	return array_view<std::remove_reference_t<T>>{&arr[0], N};
 }
 
-template<class T, std::size_t N>
-constexpr xtd::array_view<T> xtd::make_array_view(const std::array<T, N>& arr) noexcept
+namespace xtd
 {
-	return {arr.data(), N};
-}
+	template<class T>
+	void swap(array_view<T>& lhs, array_view<T>& rhs) noexcept(noexcept(lhs.swap(rhs)))
+	{
+		lhs.swap(rhs);
+	}
 
-template<class T, class Alloc>
-constexpr xtd::array_view<T> xtd::make_array_view(const std::vector<T, Alloc>& v) noexcept
-{
-	return {v.data(), v.size()};
-}
+	template<class T>
+	bool operator==(array_view<T> lhs, array_view<T> rhs)
+	{
+		if(lhs.size() != rhs.size())
+			return false;
+		if(lhs.data() == rhs.data()) // Shortcut if both views point to the same array segment
+			return true;
+		return std::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
+	}
 
-template<class T, class Traits, class Alloc>
-constexpr xtd::array_view<T> xtd::make_array_view(const std::basic_string<T, Traits, Alloc>& str) noexcept
-{
-	return {str.data(), str.size()};
-}
-
-template<class T>
-inline void xtd::swap(array_view<T>& lhs, array_view<T>& rhs) noexcept
-{
-	lhs.swap(rhs);
-}
-
-template<class T>
-inline constexpr bool xtd::operator!= (array_view<T> rhs, array_view<T> lhs) noexcept
-{
-	return !(lhs == rhs);
-}
-
-#endif // XTD_xtd_array_view_hpp_287e85e5_e775_4c16_9cdf_a2445fe5a785
+	template<class T>
+	bool operator!=(array_view<T> rhs, array_view<T> lhs)
+	{
+		if(lhs.size() != rhs.size())
+			return true;
+		return !std::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
+	}
+	
+	template<class T>
+	bool operator<(array_view<T> lhs, array_view<T> rhs)
+	{
+		return std::lexicographical_compare(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
+	}
+	
+	template<class T>
+	bool operator>(array_view<T> lhs, array_view<T> rhs)
+	{
+		return std::lexicographical_compare(rhs.begin(), rhs.end(), lhs.begin(), lhs.end());
+	}
+	
+	template<class T>
+	bool operator<=(array_view<T> lhs, array_view<T> rhs)
+	{
+		return rhs > lhs;
+	}
+	
+	template<class T>
+	bool operator>=(array_view<T> lhs, array_view<T> rhs)
+	{
+		return rhs < lhs;
+	}
+} // namespace xtd
