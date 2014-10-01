@@ -1,35 +1,47 @@
 /*
- Copyright 2013 Miro Knejp
+ Copyright 2014 Miro Knejp
  
  See the accompanied LICENSE file for licensing details.
  */
 
 /**
  \file
- Partial implementation of the string_view proposal N3609 with some discrepancies.
- 
- Reference: http://htmlpreview.github.io/?https://github.com/google/cxx-std-draft/blob/string-ref-paper/string_view.html
- This implementation uses xtd::optional to avoid the "npos" hack.
+ Implementation of the `string_view` class template in the [*library fundamentals TS* N4032](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4023.html#string.view ) §7 [string.view].
  
  \author Miro Knejp
  */
 
-#ifndef XTD_xtd_string_44929f79_d6b5_452e_9c17_2f5e98fb7dfb
-#define XTD_xtd_string_44929f79_d6b5_452e_9c17_2f5e98fb7dfb
+#pragma once
 
-#include <xtd/optional>
 #include <algorithm>
 #include <iosfwd>
 #include <iterator>
-#include <limits>
 #include <string>
 
 namespace xtd
 {
+	template<class CharT, class Traits = std::char_traits<CharT>>
+	class basic_string_view;
+
+	/// \name basic_string_view specializations
+	/// \relates basic_string_view
+	//@{
+	
+	/// Specialization of basic_string_view for `char`.
+	using string_view = basic_string_view<char>;
+	/// Specialization of basic_string_view for `char16_t`.
+	using u16string_view = basic_string_view<char16_t>;
+	/// Specialization of basic_string_view for `char32_t`.
+	using u32string_view = basic_string_view<char32_t>;
+	/// Specialization of basic_string_view for `wchar_t`.
+	using wstring_view = basic_string_view<wchar_t>;
+	
+	//@}
+}
 
 /// Implements the string_view proposal N3609.
-template<class CharT, class Traits = std::char_traits<CharT>>
-class basic_string_view
+template<class CharT, class Traits>
+class xtd::basic_string_view
 {
 public:
 	/// \name Member types
@@ -49,41 +61,36 @@ public:
 	using reverse_iterator = std::reverse_iterator<iterator>;
 	using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 	
+	static constexpr size_type npos = size_type(-1);
+	
 	//@}
 	/// \name Construction & Assignment
 	//@{
 	
 	/// Construct an empty string_view.
-	constexpr basic_string_view() noexcept
-		: _data{nullptr}, _len{0}
-	{ }
-	/// Construct from a null-terminated C string.
-	basic_string_view(const CharT* chars) noexcept(noexcept(Traits::length(chars)))
-		: _data{chars}, _len{chars ? Traits::length(chars) : 0}
-	{ }
-	/// Construct from the half-open range of characters `[first, last)`
-	basic_string_view(const CharT* first, const CharT* last)
-		: _data{first}, _len{static_cast<size_type>(last - first)}
-	{ }
-	/// Construct from C-string taking the first \p len character only.
-	constexpr basic_string_view(const CharT* chars, size_type len) noexcept
-		: _data{chars}, _len{chars ? len : 0}
-	{ }
+	constexpr basic_string_view() noexcept = default;
+	constexpr basic_string_view(const basic_string_view& s) noexcept = default;
 	/// Construct from a std::basic_string
 	template<class Allocator>
 	basic_string_view(const std::basic_string<CharT, Traits, Allocator>& str) noexcept
-		: _data{str.data()}, _len{str.size()}
-	{ }
-	/// Construct from a character initializer list.
-	constexpr basic_string_view(std::initializer_list<CharT> chars) noexcept
-		: _data{chars.begin()}, _len{chars.size()}
-	{ }
+	: _data(str.data())
+	, _len(str.size())
+	{
+	}
+	/// Construct from a null-terminated C string.
+	/*constexpr*/ basic_string_view(const CharT* chars)
+	: _data(chars)
+	, _len(chars ? Traits::length(chars) : 0)
+	{
+	}
+	/// Construct from C-string taking the first `len` character only.
+	constexpr basic_string_view(const CharT* chars, size_type len) noexcept
+	: _data(chars)
+	, _len(chars ? len : 0)
+	{
+	}
 	
-	constexpr basic_string_view(const basic_string_view& s) = default;
-	constexpr basic_string_view(basic_string_view&& s) = default;
-	
-	basic_string_view& operator = (const basic_string_view& s) = default;
-	basic_string_view& operator = (basic_string_view&& s) = default;
+	basic_string_view& operator = (const basic_string_view& s) noexcept = default;
 	
 	//@}
 	/// \name Iterators
@@ -125,7 +132,9 @@ public:
 	/// Get a reference to the character at the specified position.
 	constexpr const CharT& operator[](size_type pos) const noexcept
 	{
-		return assertNonNull(), assertNonEmpty(), _data[pos];
+		assert(pos < size() && "xtd::basic_string_view pos out of range.");
+		assert(data() && "xtd::basic_string_view points to NULL.");
+		return data()[pos];
 	}
 	/**
 	 Get a reference to the character at the specified position.
@@ -134,7 +143,9 @@ public:
 	 */
 	constexpr const CharT& at(size_type pos) const
 	{
-		return assertNonNull(), checkPosition(pos), (*this)[pos];
+		if(pos >= size())
+			throw std::out_of_range{"xtd::basic_string_view pos out of range."};
+		return (*this)[pos];
 	}
 	/// Get a reference to the first character.
 	constexpr const CharT& front() const noexcept
@@ -156,19 +167,19 @@ public:
 	/// \name Modifiers
 	//@{
 	
-	/// Reset to an empty string_view.
+	/// Reset to an empty string view.
 	void clear() noexcept
 	{
 		*this = basic_string_view{};
 	}
-	/// Remove the leading \p n characters, undefined behavior if <tt>n > size()</tt>.
+	/// Remove the leading `n` characters, undefined behavior if `n > size()`.
 	void remove_prefix(size_type n)
 	{
 		assert(n <= size() && "xtd::basic_string_view::remove_prefix: n is bigger than string");
 		_data += n;
 		_len -= n;
 	}
-	/// Remove the trailing \p n characters, undefined behavior if <tt>n > size()</tt>.
+	/// Remove the trailing `n` characters, undefined behavior if `n > size()`.
 	void remove_suffix(size_type n)
 	{
 		assert(n <= size() && "xtd::basic_string_view::remove_suffix: n is bigger than string");
@@ -177,8 +188,9 @@ public:
 	/// Swap with another string_view object.
 	void swap(basic_string_view& other) noexcept
 	{
-		std::swap(_data, other._data);
-		std::swap(_len, other._len);
+		using std::swap;
+		swap(_data, other._data);
+		swap(_len, other._len);
 	}
 
 	//@}
@@ -186,158 +198,243 @@ public:
 	//@{
 
 	/**
+	 Return a std::basic_string with the contents specified by `this`.
+	 
+	 If you need to provide a custom allocator object use to_string() instead.
+	 */
+	template<class Allocator>
+	explicit operator std::basic_string<CharT, Traits, Allocator> () const
+	{
+		assert((data() || size() == 0) && "xtd::basic_string_view points to NULL.");
+		return std::basic_string<CharT, Traits, Allocator>{begin(), end()};
+	}
+	/// Return a std::basic_string with the contents specified by `this` using the provided allocator.
+	template<class Allocator>
+	std::basic_string<CharT, Traits, Allocator> to_string(const Allocator& alloc = Allocator{}) const
+	{
+		assert((data() || size() == 0) && "xtd::basic_string_view points to NULL.");
+		return std::basic_string<CharT, Traits, Allocator>{begin(), end(), alloc};
+	}
+	/**
+	 Copy the characters in the range `[pos, pos + n)` to the destination.
+	 
+	 \param pos The starting position of the range to copy, must be `< size()`.
+	 \param n The length of the range to copy, truncated to the remaining string length.
+	 
+	 \throws std::out_of_range if `pos > size()`.
+	 */
+	size_type copy(CharT* dest, size_type n, size_type pos = 0) const
+	{
+		if(pos > size())
+			throw std::out_of_range{"pos is out of range"};
+		return std::copy_n(begin(pos), tail(pos, n), dest) - dest;
+	}
+	/**
 	 Get string_view for the specified substring range.
 	 
-	 \param pos The starting position of the substring, must be < size().
+	 \param pos The starting position of the substring, must be `< size()`.
 	 \param n Optional length of the substring, truncated to the remaining length if required. If empty takes the remaining string length.
 	 
-	 \throws std::out_of_range if <tt>pos >= size()</tt>.
+	 \throws std::out_of_range if `pos > size()`.
 	 */
-		constexpr basic_string_view substr(size_type pos, optional<size_type> n = nullopt) const
+	constexpr basic_string_view substr(size_type pos = 0, size_type n = npos) const
 	{
-		return checkPosition(pos), basic_string_view{offset(pos), tail(pos, n)};
+		if(pos > size())
+			throw std::out_of_range{"xtd::basic_string_view pos out of range."};
+		return {begin(pos), tail(pos, n)};
 	}
 	/**
 	 Compare contents with another string_view objects.
 	 
-	 \return Returns 0 if the two string match exactly, otherwise -1 if \p this compares lexicographically less than \p other or +1 otherwise.
+	 \return Returns `0` if the two string match exactly, otherwise `-1` if `this` compares lexicographically less than `other` or `+1` otherwise.
 	 */
-	int compare(basic_string_view x) const
+	int compare(basic_string_view str) const
 	{
-		auto len = std::min(size(), x.size()); // Prevent NULL derefence in empty strings
-		if(len <= 0)
-			return size() == x.size() ? 0 : (size() < x.size() ? -1 : 1);
-		
-		auto cmp = Traits::compare(data(), x.data(), _len);
-		return cmp != 0 ? cmp : (size() == x.size() ? 0 : (size() < x.size() ? -1 : 1));
+		auto cmp = Traits::compare(data(), str.data(), std::min(size(), str.size()));
+		return cmp != 0 ? cmp : (size() == str.size() ? 0 : (size() < str.size() ? -1 : 1));
 	}
-	/// True if \p this starts with exactly the same string as \p prefix.
-	bool starts_with(basic_string_view prefix) const
+	/// Equivalent to `substr(pos1, n1).compare(str)`.
+	int compare(size_type pos1, size_type n1, basic_string_view str) const
 	{
-		assertNonNull();
-		prefix.assertNonNull();
-		return size() >= prefix.size() && Traits::compare(data(), prefix.data(), prefix.size()) == 0;
+		return substr(pos1, n1).compare(str);
 	}
-	/// True if <tt>!empty()</tt> and the first character of \p this is P ch.
-	bool starts_with(CharT ch) const
+	/// Equivalent to `substr(pos1, n1).compare(str.substr(pos2, n2))`.
+	int compare(size_type pos1, size_type n1, basic_string_view str, size_type pos2, size_type n2) const
 	{
-		return size() > 0 && Traits::eq(ch, front());
+		return substr(pos1, n1).compare(str.substr(pos2, n2));
 	}
-	/// True if \p this ends with exactly the same string as \p suffix.
-	bool ends_with(basic_string_view suffix) const
+	/// Equivalent to `compare(basic_string_view{str})`.
+	int compare(const CharT* str) const
 	{
-		assertNonNull();
-		suffix.assertNonNull();
-		return size() >= suffix.size() && Traits::compare(data() + size() - suffix.size(), suffix.data(), suffix.size()) == 0;
+		return compare(basic_string_view{str});
 	}
-	/// True if <tt>!empty()</tt> and the last character of \p this is P ch.
-	bool ends_with(CharT ch) const
+	/// Equivalent to `compare(pos1, n1, basic_string_view{str})`.
+	int compare(size_type pos1, size_type n1, const CharT* str) const
 	{
-		return size() > 0 && Traits::eq(ch, back());
+		return substr(pos1, n1).compare(basic_string_view{str});
 	}
-	/// Return a std::basic_string with the contents specified by \p this.
-	template<class Allocator>
-	explicit operator std::basic_string<CharT, Traits, Allocator> () const
+	/// Equivalent to `substr(pos1, n1).compare(basic_string_view{str, n2})`.
+	int compare(size_type pos1, size_type n1, const CharT* str, size_type n2) const
 	{
-		using str = std::basic_string<CharT, Traits, Allocator>;
-		return _data ? str{_data, _len} : str{};
+		return substr(pos1, n1).compare(basic_string_view{str, n2});
 	}
 	
 	//@}
 	/// \name Searching
-	/// All methods in this group return an empty optional if the search fails, otherwise it contains the index of the first character found.
+	/// All methods in this group return `npos` if the search fails, otherwise the index of the first character found.
 	//@{
 
-	optional<size_type> find(basic_string_view s) const
+	/// Forward search for the start of the given substring, beginning the search at `pos`.
+	size_type find(basic_string_view str, size_type pos = 0) const
 	{
-		assertNonNull();
-		return forwardIterOffset(std::search(begin(), end(), s.begin(), s.end(), Traits::eq));
+		return forwardIterOffset(std::search(begin(pos), end(), str.begin(), str.end(), Traits::eq));
 	}
-	optional<size_type> find(CharT ch) const
+	/// Equivalent to 'find(basic_string_view{str}, pos)'.
+	size_type find(const CharT* str, size_type pos = 0) const
 	{
-		assertNonNull();
-		return forwardIterOffset(std::find_if(begin(), end(), [ch] (CharT x) { return Traits::eq(x, ch); }));
+		return find(basic_string_view{str}, pos);
 	}
-	optional<size_type> rfind(basic_string_view s) const
+	/// Equivalent to 'find(basic_string_view{str, n}, pos)'.
+	size_type find(const CharT* str, size_type pos, size_type n) const
 	{
-		assertNonNull();
-		return forwardIterOffset(std::find_end(begin(), end(), s.begin(), s.end(), Traits::eq));
+		return find(basic_string_view{str, n}, pos);
 	}
-	optional<size_type> rfind(CharT ch) const
+	/// Equivalent to 'find(basic_string_view{&ch, 1}, pos)'.
+	size_type find(CharT ch, size_type pos = 0) const
 	{
-		assertNonNull();
+		return forwardIterOffset(std::find_if(begin(pos), end(), [ch] (auto x) { return Traits::eq(ch, x); }));
+	}
+
+	/// Reverse search for the start of the given substring, beginning the search at `pos`.
+	size_type rfind(basic_string_view str, size_type pos = npos) const
+	{
+		return forwardIterOffset(std::find_end(begin(), pos == npos ? end() : begin(pos), str.begin(), str.end(), Traits::eq));
+	}
+	/// Equivalent to 'rfind(basic_string_view{str}, pos)'.
+	size_type rfind(const CharT* str, size_type pos = npos) const
+	{
+		return rfind(basic_string_view{str}, pos);
+	}
+	/// Equivalent to 'rfind(basic_string_view{str, n}, pos)'.
+	size_type rfind(const CharT* str, size_type pos, size_type n) const
+	{
+		return rfind(basic_string_view{str, n}, pos);
+	}
+	/// Equivalent to 'rfind(basic_string_view{&ch, 1}, pos)'.
+	size_type rfind(CharT ch, size_type pos = npos) const
+	{
 		return reverseIterOffset(std::find_if(rbegin(), rend(), [ch] (CharT x) { return Traits::eq(x, ch); }));
 	}
-	optional<size_type> find_first_of(basic_string_view s) const
+	
+	/// Forward search for the occurence of a character in the given set, beginning the search at `pos`.
+	size_type find_first_of(basic_string_view str, size_type pos = 0) const
 	{
-		assertNonNull();
-		return forwardIterOffset(std::find_first_of(begin(), end(), s.begin(), s.end(), Traits::eq));
+		return forwardIterOffset(std::find_first_of(begin(pos), end(), str.begin(), str.end(), Traits::eq));
 	}
-	optional<size_type> find_first_of(CharT ch) const
+	/// Equivalent to 'find_first_of(basic_string_view{str}, pos)'.
+	size_type find_first_of(const CharT* str, size_type pos = 0) const
 	{
-		return find(ch);
+		return find_first_of(basic_string_view{str}, pos);
 	}
-	optional<size_type> find_last_of(basic_string_view s) const
+	/// Equivalent to 'find_first_of(basic_string_view{str, n}, pos)'.
+	size_type find_first_of(const CharT* str, size_type pos, size_type n) const
 	{
-		assertNonNull();
-		return reverseIterOffset(std::find_first_of(rbegin(), rend(), s.begin(), s.end(), Traits::eq));
+		return find_first_of(basic_string_view{str, n}, pos);
 	}
-	optional<size_type> find_last_of(CharT ch) const
+	/// Equivalent to 'find_first_of(basic_string_view{&ch, 1}, pos)'.
+	size_type find_first_of(CharT ch, size_type pos = 0) const
 	{
-		return rfind(ch);
+		return find(ch, pos);
 	}
-	optional<size_type> find_first_not_of(basic_string_view s) const
+
+	
+	/// Reverse search for the occurence of a character in the given set, beginning the search at `pos`.
+	size_type find_last_of(basic_string_view s, size_type pos = npos) const
 	{
-		assertNonNull();
-		return forwardIterOffset(findNotOf(begin(), end(), s));
+		return reverseIterOffset(std::find_first_of(rbegin(pos), rend(), s.begin(), s.end(), Traits::eq));
 	}
-	optional<size_type> find_first_not_of(CharT ch) const
+	/// Equivalent to 'find_last_of(basic_string_view{str}, pos)'.
+	size_type find_last_of(const CharT* str, size_type pos = npos) const
 	{
-		assertNonNull();
-		return forwardIterOffset(std::find_if_not(begin(), end(), [ch] (CharT x) { return Traits::eq(x, ch); }));
+		return find_last_of(basic_string_view{str}, pos);
 	}
-	optional<size_type> find_last_not_of(basic_string_view s) const
+	/// Equivalent to 'find_last_of(basic_string_view{str, n}, pos)'.
+	size_type find_last_of(const CharT* str, size_type pos, size_type n) const
 	{
-		return reverseIterOffset(findNotOf(rbegin(), rend(), s));
+		return find_last_of(basic_string_view{str, n}, pos);
 	}
-	optional<size_type> find_last_not_of(CharT ch) const
+	/// Equivalent to 'rfind(ch, pos)'.
+	size_type find_last_of(CharT ch, size_type pos = npos) const
 	{
-		assertNonNull();
-		return reverseIterOffset(std::find_if_not(rbegin(), rend(), [ch] (CharT x) { return Traits::eq(ch, x); }));
+		return rfind(ch, pos);
+	}
+
+	/// Forward search for the first cahracter not in the given set, beginning the search at `pos`.
+	size_type find_first_not_of(basic_string_view str, size_type pos = 0) const
+	{
+		return forwardIterOffset(findNotOf(begin(pos), end(), str));
+	}
+	/// Equivalent to `find_first_not_of(basic_string_view{str}, pos)`.
+	size_type find_first_not_of(const CharT* str, size_type pos = 0) const
+	{
+		return find_first_not_of(basic_string_view{str}, pos);
+	}
+	/// Equivalent to `find_first_not_of(basic_string_view{str, n}, pos)`.
+	size_type find_first_not_of(const CharT* str, size_type pos, size_type n) const
+	{
+		return find_first_not_of(basic_string_view{str, n}, pos);
+	}
+	/// Equivalent to `find_first_not_of(basic_string_view{&ch, 1}, pos)`.
+	size_type find_first_not_of(CharT ch, size_type pos = 0) const
+	{
+		return forwardIterOffset(std::find_if_not(begin(pos), end(), [ch] (CharT x) { return Traits::eq(x, ch); }));
+	}
+	
+	/// Reverse search for the first cahracter not in the given set, beginning the search at `pos`.
+	size_type find_last_not_of(basic_string_view str, size_type pos = npos) const
+	{
+		return reverseIterOffset(findNotOf(rbegin(pos), rend(), str));
+	}
+	/// Equivalent to `find_last_not_of(basic_string_view{str}, pos)`.
+	size_type find_last_not_of(const CharT* str, size_type pos = npos) const
+	{
+		return find_last_not_of(basic_string_view{str}, pos);
+	}
+	/// Equivalent to `find_last_not_of(basic_string_view{str, n}, pos)`.
+	size_type find_last_not_of(const CharT* str, size_type pos, size_type n) const
+	{
+		return find_last_not_of(basic_string_view{str, n}, pos);
+	}
+	/// Equivalent to `find_last_not_of(basic_string_view{&ch, 1}, pos)`.
+	size_type find_last_not_of(CharT ch, size_type pos = npos) const
+	{
+		return reverseIterOffset(std::find_if_not(rbegin(pos), rend(), [ch] (CharT x) { return Traits::eq(x, ch); }));
 	}
 
 	//@}
 	
 private:
 	// Get the pointer _data + min(pos, size())
-	constexpr const CharT* offset(size_type pos) const noexcept
+	constexpr const CharT* begin(size_type pos) const noexcept
 	{
-		return _data + (pos >= size() ? size() : pos);
+		return _data + (pos > size() ? size() : pos);
 	}
 	// Get the length of a substring starting at pos with size n
-	constexpr size_type tail(size_type pos, optional<size_type> n) const noexcept
+	constexpr size_type tail(size_type pos, size_type n) const noexcept
 	{
-		return !n || *n + pos > size() ? size() - pos : *n;
+		return n == npos || n + pos > size() ? size() - pos : n;
 	}
-	constexpr bool assertNonNull() const noexcept
+	reverse_iterator rbegin(size_type pos) const noexcept
 	{
-		return assert(_data && "xtd::basic_string_view points to NULL."), true;
+		return reverse_iterator{pos == npos ? end() : begin(pos)};
 	}
-	constexpr bool assertNonEmpty() const noexcept
+	size_type forwardIterOffset(iterator it) const
 	{
-		return assert(_len > 0 && "xtd::basic_string_view has length zero."), true;
+		return it == end() ? npos : it - begin();
 	}
-	constexpr bool checkPosition(size_type pos) const
+	size_type reverseIterOffset(reverse_iterator it) const
 	{
-		return pos >= size() ? throw std::out_of_range{"xtd::basic_string_view pos out of range."} : true;
-	}
-	optional<size_type> forwardIterOffset(iterator it) const
-	{
-		return it == end() ? optional<size_type>{nullopt} : optional<size_type>{it - begin()};
-	}
-	optional<size_type> reverseIterOffset(reverse_iterator it) const
-	{
-		return it == rend() ? optional<size_type>{nullopt} : optional<size_type>{it.base() - 1 - begin()};
+		return it == rend() ? npos : it.base() - 1 - begin();
 	}
 	template<class Iter>
 	static Iter findNotOf(Iter first, Iter last, basic_string_view s)
@@ -350,229 +447,203 @@ private:
 		return last;
 	}
 	
-	const CharT* _data;
-	size_type _len;
+	const CharT* _data{nullptr};
+	size_type _len{0};
 };
 
-/// \name Relational operators
-/// \relates xtd::basic_string_view
-//@{
-
-/// True if the two strings are lexicographically equal.
-template<class CharT, class Traits>
-inline bool operator == (basic_string_view<CharT, Traits> a, basic_string_view<CharT, Traits> b)
+namespace xtd
 {
-	return a.size() == b.size() && a.compare(b) == 0;
-}
+	/// \name Relational operators
+	/// \relates xtd::basic_string_view
+	//@{
 
-/// True if the two strings are lexicographically equal.
-template<class CharT, class Traits>
-inline bool operator == (const CharT* a, basic_string_view<CharT, Traits> b)
-{
-	return basic_string_view<CharT, Traits>{a} == b;
-}
-
-/// True if the two strings are lexicographically equal.
-template<class CharT, class Traits>
-inline bool operator == (basic_string_view<CharT, Traits> a, const CharT* b)
-{
-	return a == basic_string_view<CharT, Traits>{b};
-}
-
-/// True if the two strings are lexicographically inequal.
-template<class CharT, class Traits>
-inline bool operator != (basic_string_view<CharT, Traits> a, basic_string_view<CharT, Traits> b)
-{
-	return a.size() != b.size() || a.compare(b) != 0;
-}
-
-/// True if the two strings are lexicographically inequal.
-template<class CharT, class Traits>
-inline bool operator != (const CharT* a, basic_string_view<CharT, Traits> b)
-{
-	return basic_string_view<CharT, Traits>{a} != b;
-}
-
-/// True if the two strings are lexicographically inequal.
-template<class CharT, class Traits>
-inline bool operator != (basic_string_view<CharT, Traits> a, const CharT* b)
-{
-	return a != basic_string_view<CharT, Traits>{b};
-}
-
-/// True if \p a compares lexicographically less than \p b.
-template<class CharT, class Traits>
-inline bool operator < (basic_string_view<CharT, Traits> a, basic_string_view<CharT, Traits> b)
-{
-	return a.compare(b) < 0;
-}
-
-/// True if \p a compares lexicographically less than \p b.
-template<class CharT, class Traits>
-inline bool operator < (const CharT* a, basic_string_view<CharT, Traits> b)
-{
-	return basic_string_view<CharT, Traits>{a} < b;
-}
-
-/// True if \p a compares lexicographically less than \p b.
-template<class CharT, class Traits>
-inline bool operator < (basic_string_view<CharT, Traits> a, const CharT* b)
-{
-	return a < basic_string_view<CharT, Traits>{b};
-}
-
-/// True if \p a compares lexicographically greater than \p b.
-template<class CharT, class Traits>
-inline bool operator > (basic_string_view<CharT, Traits> a, basic_string_view<CharT, Traits> b)
-{
-	return a.compare(b) > 0;
-}
-
-/// True if \p a compares lexicographically greater than \p b.
-template<class CharT, class Traits>
-inline bool operator > (const CharT* a, basic_string_view<CharT, Traits> b)
-{
-	return basic_string_view<CharT, Traits>{a} > b;
-}
-
-/// True if \p a compares lexicographically greater than \p b.
-template<class CharT, class Traits>
-inline bool operator > (basic_string_view<CharT, Traits> a, const CharT* b)
-{
-	return a > basic_string_view<CharT, Traits>{b};
-}
-
-/// True if \p a compares lexicographically less than or equal to \p b.
-template<class CharT, class Traits>
-inline bool operator <= (basic_string_view<CharT, Traits> a, basic_string_view<CharT, Traits> b)
-{
-	return a.compare(b) <= 0;
-}
-
-/// True if \p a compares lexicographically less than or equal to \p b.
-template<class CharT, class Traits>
-inline bool operator <= (const CharT* a, basic_string_view<CharT, Traits> b)
-{
-	return basic_string_view<CharT, Traits>{a} <= b;
-}
-
-/// True if \p a compares lexicographically less than or equal to \p b.
-template<class CharT, class Traits>
-inline bool operator <= (basic_string_view<CharT, Traits> a, const CharT* b)
-{
-	return a <= basic_string_view<CharT, Traits>{b};
-}
-
-/// True if \p a compares lexicographically greater than or equal to \p b.
-template<class CharT, class Traits>
-inline bool operator >= (basic_string_view<CharT, Traits> a, basic_string_view<CharT, Traits> b)
-{
-	return a.compare(b) >= 0;
-}
-
-/// True if \p a compares lexicographically greater than or equal to \p b.
-template<class CharT, class Traits>
-inline bool operator >= (const CharT* a, basic_string_view<CharT, Traits> b)
-{
-	return basic_string_view<CharT, Traits>{a} >= b;
-}
-
-/// True if \p a compares lexicographically greater than or equal to \p b.
-template<class CharT, class Traits>
-inline bool operator >= (basic_string_view<CharT, Traits> a, const CharT* b)
-{
-	return a >= basic_string_view<CharT, Traits>{b};
-}
-
-//@}
-/// \name Swap
-/// \relates xtd::basic_string_view
-//@{
-
-/// Swap the referenced contents of two basic_string_view objects.
-template<class CharT, class Traits>
-inline void swap(basic_string_view<CharT, Traits>& a, basic_string_view<CharT, Traits>& b) noexcept
-{
-	a.swap(b);
-}
-
-//@}
-/// \name Specialized algorithms
-/// \relates xtd::basic_string_view
-//@{
-
-/// convert a basci-string_view to a std::string_view, optionally specifying a custom allocator.
-template<class CharT, class Traits, class Allocator = std::allocator<CharT>>
-inline std::basic_string<CharT, Traits, Allocator> to_string(basic_string_view<CharT, Traits> s, const Allocator& alloc = Allocator{})
-{
-	return std::basic_string<CharT, Traits, Allocator>{s.cbegin(), s.cend(), alloc};
-}
-
-//@}
-
-// TODO: add numeric conversions
-// TODO: std::hash<...>
-
-/// \name Inserter
-/// \relates xtd::basic_string_view
-//@{
-
-/// Performs a formatted output of the content referenced by \p s according to the rules of FormattedOuput [ostream.formatted.reqmts].
-template<class CharT, class Traits>
-std::basic_ostream<CharT, Traits>& operator << (std::basic_ostream<CharT, Traits>& os, basic_string_view<CharT, Traits> s)
-{
-	using Stream = std::basic_ostream<CharT, Traits>;
-	typename Stream::sentry ok{os};
-	if(ok)
+	/// True if the two strings are lexicographically equal.
+	template<class CharT, class Traits>
+	bool operator==(basic_string_view<CharT, Traits> lhs, basic_string_view<CharT, Traits> rhs)
 	{
-		try
+		return lhs.size() == rhs.size() && lhs.compare(rhs) == 0;
+	}
+	/// True if the two strings are lexicographically equal.
+	template<class CharT, class Traits>
+	bool operator==(basic_string_view<CharT, Traits> lhs, const CharT* rhs)
+	{
+		return lhs == basic_string_view<CharT, Traits>{rhs};
+	}
+	/// True if the two strings are lexicographically equal.
+	template<class CharT, class Traits>
+	bool operator==(const CharT* lhs, basic_string_view<CharT, Traits> rhs)
+	{
+		return basic_string_view<CharT, Traits>{lhs} == rhs;
+	}
+
+	/// True if the two strings are lexicographically inequal.
+	template<class CharT, class Traits>
+	bool operator!=(basic_string_view<CharT, Traits> lhs, basic_string_view<CharT, Traits> rhs)
+	{
+		return lhs.size() != rhs.size() || lhs.compare(rhs) != 0;
+	}
+	/// True if the two strings are lexicographically inequal.
+	template<class CharT, class Traits>
+	bool operator!=(basic_string_view<CharT, Traits> lhs, const CharT* rhs)
+	{
+		return lhs != basic_string_view<CharT, Traits>{rhs};
+	}
+	/// True if the two strings are lexicographically inequal.
+	template<class CharT, class Traits>
+	bool operator!=(const CharT* lhs, basic_string_view<CharT, Traits> rhs)
+	{
+		return basic_string_view<CharT, Traits>{lhs} != rhs;
+	}
+
+	/// True if `lhs` compares lexicographically less than `rhs`.
+	template<class CharT, class Traits>
+	bool operator<(basic_string_view<CharT, Traits> lhs, basic_string_view<CharT, Traits> rhs)
+	{
+		return lhs.compare(rhs) < 0;
+	}
+	/// True if `lhs` compares lexicographically less than `rhs`.
+	template<class CharT, class Traits>
+	bool operator<(basic_string_view<CharT, Traits> lhs, const CharT* rhs)
+	{
+		return lhs < basic_string_view<CharT, Traits>{rhs};
+	}
+	/// True if `lhs` compares lexicographically less than `rhs`.
+	template<class CharT, class Traits>
+	bool operator<(const CharT* lhs, basic_string_view<CharT, Traits> rhs)
+	{
+		return basic_string_view<CharT, Traits>{lhs} < rhs;
+	}
+
+	/// True if `lhs` compares lexicographically greater than `rhs`.
+	template<class CharT, class Traits>
+	bool operator>(basic_string_view<CharT, Traits> lhs, basic_string_view<CharT, Traits> rhs)
+	{
+		return lhs.compare(rhs) > 0;
+	}
+	/// True if `lhs` compares lexicographically greater than `rhs`.
+	template<class CharT, class Traits>
+	bool operator>(basic_string_view<CharT, Traits> lhs, const CharT* rhs)
+	{
+		return lhs > basic_string_view<CharT, Traits>{rhs};
+	}
+	/// True if `lhs` compares lexicographically greater than `rhs`.
+	template<class CharT, class Traits>
+	bool operator>(const CharT* lhs, basic_string_view<CharT, Traits> rhs)
+	{
+		return basic_string_view<CharT, Traits>{lhs} > rhs;
+	}
+
+	/// True if `lhs` compares lexicographically less than or equal to `rhs`.
+	template<class CharT, class Traits>
+	bool operator<=(basic_string_view<CharT, Traits> lhs, basic_string_view<CharT, Traits> rhs)
+	{
+		return lhs.compare(rhs) <= 0;
+	}
+	/// True if `lhs` compares lexicographically less than or equal to `rhs`.
+	template<class CharT, class Traits>
+	bool operator<=(basic_string_view<CharT, Traits> lhs, const CharT* rhs)
+	{
+		return lhs <= basic_string_view<CharT, Traits>{rhs};
+	}
+	/// True if `lhs` compares lexicographically less than or equal to `rhs`.
+	template<class CharT, class Traits>
+	bool operator<=(const CharT* lhs, basic_string_view<CharT, Traits> rhs)
+	{
+		return basic_string_view<CharT, Traits>{lhs} <= rhs;
+	}
+
+	/// True if `lhs` compares lexicographically greater than or equal to `rhs`.
+	template<class CharT, class Traits>
+	bool operator>=(basic_string_view<CharT, Traits> lhs, basic_string_view<CharT, Traits> rhs)
+	{
+		return lhs.compare(rhs) >= 0;
+	}
+	/// True if `lhs` compares lexicographically greater than or equal to `rhs`.
+	template<class CharT, class Traits>
+	bool operator>=(basic_string_view<CharT, Traits> lhs, const CharT* rhs)
+	{
+		return lhs >= basic_string_view<CharT, Traits>{rhs};
+	}
+	/// True if `lhs` compares lexicographically greater than or equal to `rhs`.
+	template<class CharT, class Traits>
+	bool operator>=(const CharT* lhs, basic_string_view<CharT, Traits> rhs)
+	{
+		return basic_string_view<CharT, Traits>{lhs} >= rhs;
+	}
+
+	//@}
+	/// \name Swap
+	/// \relates xtd::basic_string_view
+	//@{
+
+	/// Swap the referenced contents of two basic_string_view objects.
+	template<class CharT, class Traits>
+	void swap(basic_string_view<CharT, Traits>& lhs, basic_string_view<CharT, Traits>& rhs) noexcept(noexcept(lhs.swap(rhs)))
+	{
+		lhs.swap(rhs);
+	}
+
+	//@}
+	/// \name Specialized algorithms
+	/// \relates xtd::basic_string_view
+	//@{
+
+	/// convert a basic_string_view to a std::basic_string, optionally specifying a custom allocator.
+	template<class CharT, class Traits, class Allocator = std::allocator<CharT>>
+	std::basic_string<CharT, Traits, Allocator> to_string(basic_string_view<CharT, Traits> s, const Allocator& alloc = Allocator{})
+	{
+		return std::basic_string<CharT, Traits, Allocator>{s.cbegin(), s.cend(), alloc};
+	}
+
+	//@}
+
+	// TODO: add numeric conversions
+	// TODO: std::hash<...>
+
+	/// \name Inserter
+	/// \relates xtd::basic_string_view
+	//@{
+
+	/// Performs a formatted output of the content referenced by `s` according to the rules of `FormattedOuput`.
+	template<class CharT, class Traits>
+	std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, basic_string_view<CharT, Traits> s)
+	{
+		using Stream = std::basic_ostream<CharT, Traits>;
+		typename Stream::sentry ok{os};
+		if(ok)
 		{
-			auto width = os.width();
-			if(width > s.size())
+			try
 			{
-				auto adjustfield = os.flags() & Stream::adjustfield;
-				if(adjustfield == Stream::left)
+				auto width = os.width();
+				if(width > s.size())
 				{
-					os.rdbuf()->sputn(s.data(), s.size());
-					std::fill_n(std::ostreambuf_iterator<CharT>{os}, width - s.size(), os.fill());
+					auto adjustfield = os.flags() & Stream::adjustfield;
+					if(adjustfield == Stream::left)
+					{
+						os.rdbuf()->sputn(s.data(), s.size());
+						std::fill_n(std::ostreambuf_iterator<CharT>{os}, width - s.size(), os.fill());
+					}
+					else
+					{
+						std::fill_n(std::ostreambuf_iterator<CharT>{os}, width - s.size(), os.fill());
+						os.rdbuf()->sputn(s.data(), s.size());
+					}
 				}
 				else
-				{
-					std::fill_n(std::ostreambuf_iterator<CharT>{os}, width - s.size(), os.fill());
 					os.rdbuf()->sputn(s.data(), s.size());
-				}
+				os.width(0);
 			}
-			else
-				os.rdbuf()->sputn(s.data(), s.size());
-			os.width(0);
+			catch(...)
+			{
+				os.setstate(Stream::badbit);
+				throw;
+			}
 		}
-		catch(...)
-		{
-			os.setstate(Stream::badbit);
-			throw;
-		}
+		else
+			os.setstate(Stream::failbit);
+		return os;
 	}
-	else
-		os.setstate(Stream::failbit);
-	return os;
-}
 
-//@}
-/// \name basic_string_view specializations
-/// \relates xtd::basic_string_view
-//@{
-
-/// Specialization of basic_string_view for \p char.
-using string_view = basic_string_view<char>;
-/// Specialization of basic_string_view for \p char16_t.
-using u16string_view = basic_string_view<char16_t>;
-/// Specialization of basic_string_view for \p char32_t.
-using u32string_view = basic_string_view<char32_t>;
-/// Specialization of basic_string_view for \p wchar_t.
-using wstring_view = basic_string_view<wchar_t>;
-
-//@}
-
+	//@}
+	
 } // namespace xtd
-
-#endif // XTD_xtd_string_44929f79_d6b5_452e_9c17_2f5e98fb7dfb
