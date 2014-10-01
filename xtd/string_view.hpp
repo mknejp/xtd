@@ -14,6 +14,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cassert>
 #include <iosfwd>
 #include <iterator>
 #include <string>

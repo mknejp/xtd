@@ -1,5 +1,5 @@
 /*
- Copyright 2013 Miro Knejp
+ Copyright 2014 Miro Knejp
  
  See the accompanied LICENSE file for licensing details.
  */
@@ -11,8 +11,7 @@
  \author Miro Knejp
  */
 
-#ifndef XTD_xtd_iomanip_e181ec47_6638_42f7_9191_32452cd706f5
-#define XTD_xtd_iomanip_e181ec47_6638_42f7_9191_32452cd706f5
+#pragma once
 
 #include <array>
 #include <iomanip>
@@ -175,5 +174,3 @@ auto unformatted(std::vector<T, Allocator>& v, typename std::vector<T, Allocator
 }
 
 } // namesapce xtd
-
-#endif // XTD_xtd_iomanip_e181ec47_6638_42f7_9191_32452cd706f5

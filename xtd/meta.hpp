@@ -1,5 +1,5 @@
 /*
- Copyright 2013 Miro Knejp
+ Copyright 2014 Miro Knejp
  
  See the accompanied LICENSE file for licensing details.
  */
@@ -7,10 +7,11 @@
 /**
  \file
  Various template metaprogramming tools to bypass boost MPL's preprocessor-based limitations using variadic templates instead.
+ 
+ \author Miro Knejp
  */
 
-#ifndef XTD_xtd_meta_hpp_57f206c8_0504_429c_a6a9_3b732dc63a20
-#define XTD_xtd_meta_hpp_57f206c8_0504_429c_a6a9_3b732dc63a20
+#pragma once
 
 #include <tuple>
 #include <utility>
@@ -24,17 +25,17 @@ namespace xtd
 		struct at;
 		
 		/**
-		 Given a std::tuple of std::pair acting as a type map, find the type associated with the given \c Key.
+		 Given a std::tuple of std::pair acting as a type map, find the type associated with the given `Key`.
 		 
-		 \code
+		 ~~~cpp
 		 using MyMap = std::tuple<std::pair<int, float>, std::pair<float, double>>;
-		 using T = typename Map<MyMap, float>::type; // T is double
-		 \endcode
+		 using T = typename at<MyMap, float>::type; // T is double
+		 ~~~
 		 */
 		template<class Key, class... Keys, class... Values>
 		struct at<std::tuple<std::pair<Keys, Values>...>, Key>;
 		
-		/// A shorthand for <tt>typename at<Tuple, Key>::typename</tt>.
+		/// A shorthand for `typename at<Tuple, Key>::typename`.
 		template<class Tuple, class Key>
 		using at_t = typename at<Tuple, Key>::type;
 	}
@@ -73,5 +74,3 @@ struct xtd::meta::at<std::tuple<std::pair<Keys, Values>...>, Key>
 {
 	using type = typename detail::PairTupleMatcher<Key, std::pair<Keys, Values>...>::type;
 };
-
-#endif // XTD_xtd_meta_hpp_57f206c8_0504_429c_a6a9_3b732dc63a20

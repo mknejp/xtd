@@ -15,7 +15,7 @@
 
 #include <cassert>
 #include <initializer_list>
-#include <functional> // for hash<> and less<>
+#include <functional> // for hash<>
 #include <memory>
 #include <stdexcept>
 #include <type_traits>

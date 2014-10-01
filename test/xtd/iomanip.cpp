@@ -4,7 +4,7 @@
  See the accompanied LICENSE file for licensing details.
  */
 
-#include <xtd/iomanip>
+#include <xtd/iomanip.hpp>
 
 #include <boost/mpl/vector.hpp>
 #include <boost/test/unit_test.hpp>
