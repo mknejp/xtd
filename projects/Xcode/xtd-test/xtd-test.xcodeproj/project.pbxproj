@@ -13,6 +13,8 @@
 		CF565B5917B91519000A4EDD /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CF565B5817B91519000A4EDD /* main.cpp */; };
 		CF565B5B17B915A9000A4EDD /* iomanip.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CF565B5A17B915A9000A4EDD /* iomanip.cpp */; };
 		CF565B5E17B91CAF000A4EDD /* string.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CF565B5D17B91CAF000A4EDD /* string.cpp */; };
+		CFAC8F4919DA6F3200A7E3C4 /* gmock-all.cc in Sources */ = {isa = PBXBuildFile; fileRef = CFAC8F4819DA6F3200A7E3C4 /* gmock-all.cc */; };
+		CFAC8F4B19DA6F3F00A7E3C4 /* gtest-all.cc in Sources */ = {isa = PBXBuildFile; fileRef = CFAC8F4A19DA6F3F00A7E3C4 /* gtest-all.cc */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -41,6 +43,8 @@
 		CF565B5C17B91C9F000A4EDD /* string */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; path = string; sourceTree = "<group>"; };
 		CF565B5D17B91CAF000A4EDD /* string.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = string.cpp; sourceTree = "<group>"; };
 		CF6DAE6917C31ADA00EBFE7C /* type_traits */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; path = type_traits; sourceTree = "<group>"; };
+		CFAC8F4819DA6F3200A7E3C4 /* gmock-all.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = "gmock-all.cc"; path = "../utils/gmock/src/gmock-all.cc"; sourceTree = "<group>"; };
+		CFAC8F4A19DA6F3F00A7E3C4 /* gtest-all.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = "gtest-all.cc"; path = "../utils/gmock/gtest/src/gtest-all.cc"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -88,6 +92,8 @@
 		CF565B5117B90ABA000A4EDD /* test */ = {
 			isa = PBXGroup;
 			children = (
+				CFAC8F4A19DA6F3F00A7E3C4 /* gtest-all.cc */,
+				CFAC8F4819DA6F3200A7E3C4 /* gmock-all.cc */,
 				CF565B5817B91519000A4EDD /* main.cpp */,
 				CF565B5217B90ABA000A4EDD /* xtd */,
 			);
@@ -174,8 +180,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LANGUAGE_STANDARD = "c++14";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
@@ -183,7 +188,6 @@
 				CLANG_WARN_INT_CONVERSION = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
 				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
@@ -197,9 +201,17 @@
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
+					$SRCROOT/../../../,
+					$SRCROOT/../../../utils/gmock/gtest/include,
+					$SRCROOT/../../../utils/gmock/include,
+				);
 				MACOSX_DEPLOYMENT_TARGET = 10.7;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
+				USER_HEADER_SEARCH_PATHS = "$SRCROOT/../../../utils/gmock/gtest $SRCROOT/../../../utils/gmock";
 			};
 			name = Debug;
 		};
@@ -207,8 +219,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LANGUAGE_STANDARD = "c++14";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
@@ -217,7 +228,6 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
 				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
@@ -225,23 +235,22 @@
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
+					$SRCROOT/../../../,
+					$SRCROOT/../../../utils/gmock/gtest/include,
+					$SRCROOT/../../../utils/gmock/include,
+				);
 				MACOSX_DEPLOYMENT_TARGET = 10.7;
 				SDKROOT = macosx;
+				USER_HEADER_SEARCH_PATHS = "$SRCROOT/../../../utils/gmock/gtest $SRCROOT/../../../utils/gmock";
 			};
 			name = Release;
 		};
 		CF565AA317B8F151000A4EDD /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				HEADER_SEARCH_PATHS = (
-					../../../libs/include,
-					../../../,
-				);
-				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../../../libs/bin/Xcode/$(CONFIGURATION)\"";
-				OTHER_LDFLAGS = (
-					"-lboost",
-					"-lboost_test",
-				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -249,15 +258,6 @@
 		CF565AA417B8F151000A4EDD /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				HEADER_SEARCH_PATHS = (
-					../../../libs/include,
-					../../../,
-				);
-				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../../../libs/bin/Xcode/$(CONFIGURATION)\"";
-				OTHER_LDFLAGS = (
-					"-lboost",
-					"-lboost_test",
-				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
