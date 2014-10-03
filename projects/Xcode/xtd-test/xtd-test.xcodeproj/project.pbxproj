@@ -10,6 +10,7 @@
 		CF2EC83017BAC4F500CADDD2 /* optional.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CF2EC82F17BAC4F500CADDD2 /* optional.cpp */; };
 		CF565B5917B91519000A4EDD /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CF565B5817B91519000A4EDD /* main.cpp */; };
 		CF565B5E17B91CAF000A4EDD /* string_view.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CF565B5D17B91CAF000A4EDD /* string_view.cpp */; };
+		CFAC469A19DF25EA00725AC5 /* tuple.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CFAC469919DF25EA00725AC5 /* tuple.cpp */; };
 		CFAC8F4919DA6F3200A7E3C4 /* gmock-all.cc in Sources */ = {isa = PBXBuildFile; fileRef = CFAC8F4819DA6F3200A7E3C4 /* gmock-all.cc */; };
 		CFAC8F4B19DA6F3F00A7E3C4 /* gtest-all.cc in Sources */ = {isa = PBXBuildFile; fileRef = CFAC8F4A19DA6F3F00A7E3C4 /* gtest-all.cc */; };
 /* End PBXBuildFile section */
@@ -33,6 +34,8 @@
 		CF565B5817B91519000A4EDD /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		CF565B5A17B915A9000A4EDD /* iomanip.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = iomanip.cpp; sourceTree = "<group>"; };
 		CF565B5D17B91CAF000A4EDD /* string_view.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = string_view.cpp; sourceTree = "<group>"; };
+		CFAC469819DF24C200725AC5 /* tuple.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = tuple.hpp; sourceTree = "<group>"; };
+		CFAC469919DF25EA00725AC5 /* tuple.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = tuple.cpp; sourceTree = "<group>"; };
 		CFAC8F4019DA2FFE00A7E3C4 /* array_view.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = array_view.hpp; sourceTree = "<group>"; };
 		CFAC8F4119DA2FFE00A7E3C4 /* iomanip.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = iomanip.hpp; sourceTree = "<group>"; };
 		CFAC8F4219DA2FFE00A7E3C4 /* memory.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = memory.hpp; sourceTree = "<group>"; };
@@ -80,6 +83,7 @@
 				CFAC8F4319DA2FFE00A7E3C4 /* meta.hpp */,
 				CFAC8F4419DA2FFE00A7E3C4 /* optional.hpp */,
 				CFAC8F4519DA2FFE00A7E3C4 /* string_view.hpp */,
+				CFAC469819DF24C200725AC5 /* tuple.hpp */,
 			);
 			name = xtd;
 			path = ../../../xtd;
@@ -104,6 +108,7 @@
 				CF565B5317B90AD5000A4EDD /* memory.cpp */,
 				CF2EC82F17BAC4F500CADDD2 /* optional.cpp */,
 				CF565B5D17B91CAF000A4EDD /* string_view.cpp */,
+				CFAC469919DF25EA00725AC5 /* tuple.cpp */,
 			);
 			path = xtd;
 			sourceTree = "<group>";
@@ -161,6 +166,7 @@
 			files = (
 				CFAC8F4919DA6F3200A7E3C4 /* gmock-all.cc in Sources */,
 				CF565B5917B91519000A4EDD /* main.cpp in Sources */,
+				CFAC469A19DF25EA00725AC5 /* tuple.cpp in Sources */,
 				CFAC8F4B19DA6F3F00A7E3C4 /* gtest-all.cc in Sources */,
 				CF565B5E17B91CAF000A4EDD /* string_view.cpp in Sources */,
 				CF2EC83017BAC4F500CADDD2 /* optional.cpp in Sources */,
