@@ -38,7 +38,67 @@ namespace xtd
 	using wstring_view = basic_string_view<wchar_t>;
 	
 	//@}
+	
+	namespace detail
+	{
+		template<class CharT>
+		class string_view_iterator;
+	}
 }
+
+template<class CharT>
+class xtd::detail::string_view_iterator : public std::iterator_traits<const CharT*>::iterator_category
+{
+public:
+	using difference_type	= typename std::iterator_traits<const CharT*>::difference_type;
+	using iterator_category	= typename std::iterator_traits<const CharT*>::iterator_category;
+	using pointer			= typename std::iterator_traits<const CharT*>::pointer;
+	using reference			= typename std::iterator_traits<const CharT*>::reference;
+	using value_type		= typename std::iterator_traits<const CharT*>::value_type;
+	
+	constexpr string_view_iterator() noexcept = default;
+	template<class Traits>
+	constexpr string_view_iterator(basic_string_view<CharT, Traits> str) noexcept : _p(str.data()) { }
+	
+	constexpr reference operator*() const noexcept { return *_p; }
+	constexpr pointer operator->() const noexcept { return _p; }
+	
+	constexpr reference operator[](difference_type n) { return _p[n]; }
+	
+	string_view_iterator& operator++() { ++_p; return *this; }
+	string_view_iterator& operator--() { --_p; return *this; }
+	string_view_iterator operator++(int) { return { _p++ }; }
+	string_view_iterator operator--(int) { return { _p-- }; }
+	
+	string_view_iterator& operator+=(difference_type n) { _p += n; return *this; }
+	string_view_iterator& operator-=(difference_type n) { _p -= n; return *this; }
+	
+	friend constexpr auto operator+(string_view_iterator i, difference_type n) { return i += n; }
+	friend constexpr auto operator-(string_view_iterator i, difference_type n) { return i -= n; }
+	friend constexpr auto operator+(difference_type n, string_view_iterator i) { return i += n; }
+	
+	friend constexpr auto operator-(string_view_iterator lhs, string_view_iterator rhs) { return lhs._p - rhs._p; }
+	
+	friend constexpr bool operator==(string_view_iterator rhs, string_view_iterator lhs) { return lhs._p == rhs._p; }
+	friend constexpr bool operator!=(string_view_iterator rhs, string_view_iterator lhs) { return lhs._p != rhs._p; }
+	friend constexpr bool operator<(string_view_iterator rhs, string_view_iterator lhs) { return lhs._p < rhs._p; }
+	friend constexpr bool operator>(string_view_iterator rhs, string_view_iterator lhs) { return lhs._p > rhs._p; }
+	friend constexpr bool operator<=(string_view_iterator rhs, string_view_iterator lhs) { return lhs._p <= rhs._p; }
+	friend constexpr bool operator>=(string_view_iterator rhs, string_view_iterator lhs) { return lhs._p >= rhs._p; }
+	
+	void swap(string_view_iterator& other) noexcept
+	{
+		using std::swap;
+		swap(_p, other._p);
+	}
+	
+	friend void swap(string_view_iterator& lhs, string_view_iterator& rhs) noexcept { lhs.swap(rhs); }
+	
+private:
+	constexpr string_view_iterator(const CharT* p) noexcept : _p(p) { }
+	
+	const CharT* _p = nullptr;
+};
 
 /// Implements the string_view proposal N3609.
 template<class CharT, class Traits>
@@ -56,8 +116,8 @@ public:
 	using const_reference = const CharT&;
 	using pointer = CharT*;
 	using const_pointer = const CharT*;
-
-	using iterator = const CharT*; // basic_string_view is non-modifying
+	
+	using iterator = detail::string_view_iterator<CharT>;
 	using const_iterator = iterator;
 	using reverse_iterator = std::reverse_iterator<iterator>;
 	using const_reverse_iterator = std::reverse_iterator<const_iterator>;
@@ -90,6 +150,12 @@ public:
 	, _len(chars ? len : 0)
 	{
 	}
+	/// Construct from a range of iterators
+	constexpr basic_string_view(const_iterator first, const_iterator last) noexcept
+	: _data(&*first)
+	, _len(last - first)
+	{
+	}
 	
 	basic_string_view& operator = (const basic_string_view& s) noexcept = default;
 	
@@ -102,9 +168,9 @@ public:
 	/// Returns an iterator to the end
 	constexpr const_iterator end() const noexcept { return cend(); }
 	/// Returns an iterator to the beginning
-	constexpr const_iterator cbegin() const noexcept { return data(); }
+	constexpr const_iterator cbegin() const noexcept { return {*this}; }
 	/// Returns an iterator to the end
-	constexpr const_iterator cend() const noexcept { return data() + size(); }
+	constexpr const_iterator cend() const noexcept { return const_iterator{*this} + size(); }
 	
 	/// Returns a reverse iterator to the beginning
 	const_reverse_iterator rbegin() const noexcept { return crbegin(); }
@@ -228,7 +294,7 @@ public:
 	{
 		if(pos > size())
 			throw std::out_of_range{"pos is out of range"};
-		return std::copy_n(begin(pos), tail(pos, n), dest) - dest;
+		return std::copy_n(begin(pos), end(pos, n), dest) - dest;
 	}
 	/**
 	 Get string_view for the specified substring range.
@@ -242,7 +308,7 @@ public:
 	{
 		if(pos > size())
 			throw std::out_of_range{"xtd::basic_string_view pos out of range."};
-		return {begin(pos), tail(pos, n)};
+		return {begin(pos), end(pos, n)};
 	}
 	/**
 	 Compare contents with another string_view objects.
@@ -415,15 +481,15 @@ public:
 	//@}
 	
 private:
-	// Get the pointer _data + min(pos, size())
-	constexpr const CharT* begin(size_type pos) const noexcept
+	// Get the iterator for at min(pos, size())
+	constexpr const_iterator begin(size_type pos) const noexcept
 	{
-		return _data + (pos > size() ? size() : pos);
+		return begin() + (pos > size() ? size() : pos);
 	}
-	// Get the length of a substring starting at pos with size n
-	constexpr size_type tail(size_type pos, size_type n) const noexcept
+	// Get the end iterator for a string starting at pos with length n
+	constexpr const_iterator end(size_type pos, size_type n) const noexcept
 	{
-		return n == npos || n + pos > size() ? size() - pos : n;
+		return begin(pos) + (n == npos || n + pos > size() ? size() - pos : n);
 	}
 	reverse_iterator rbegin(size_type pos) const noexcept
 	{
