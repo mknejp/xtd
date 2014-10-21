@@ -100,7 +100,7 @@ private:
 	const CharT* _p = nullptr;
 };
 
-/// Implements the string_view proposal N3609.
+/// Implementation of the `string_view` class template in the [*library fundamentals TS* N4032](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4023.html#string.view ) §7 [string.view].
 template<class CharT, class Traits>
 class xtd::basic_string_view
 {
@@ -662,6 +662,18 @@ namespace xtd
 		return std::basic_string<CharT, Traits, Allocator>{s.cbegin(), s.cend(), alloc};
 	}
 
+	//@}
+	/// \name Integration with std::string
+	/// \relates xtd::basic_string_view
+	//@{
+	
+	/// Append a basic_string_view to a `std::string`.
+	template<class CharT, class Traits, class Alloc>
+	decltype(auto) operator+=(std::basic_string<CharT, Traits, Alloc>& lhs, basic_string_view<CharT, Traits> rhs)
+	{
+		return lhs.append(rhs.begin(), rhs.end());
+	}
+	
 	//@}
 
 	// TODO: add numeric conversions

@@ -169,6 +169,8 @@ public:
  
  An optional<T> is called *disengaged* if the stored value is not initialized. Whenever an optional<T> transitions form engaged to disengaged the stored object's destructor is invoked. When the optional<T> object is destroyed the stored object's destructor is only invoked if the optional<T> object is engaged.
  
+ Based on §5 [optional] in [*library fundamentals TS* N4032](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4023.html#optional ).
+ 
  \tparam T The type of the stored object. Must be destructible, not a reference or (possibly *cv-qualified*) nullopt_t or in_place_t.
  */
 template<class T>
