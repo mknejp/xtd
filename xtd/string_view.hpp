@@ -58,7 +58,7 @@ public:
 	
 	constexpr string_view_iterator() noexcept = default;
 	template<class Traits>
-	constexpr string_view_iterator(basic_string_view<CharT, Traits> str) noexcept : _p(str.data()) { }
+	constexpr string_view_iterator(basic_string_view<CharT, Traits> str, std::size_t offset = 0) noexcept : _p(str.data() + offset) { }
 	
 	constexpr reference operator*() const noexcept { return *_p; }
 	constexpr pointer operator->() const noexcept { return _p; }
@@ -153,7 +153,7 @@ public:
 	/// Construct from a range of iterators
 	constexpr basic_string_view(const_iterator first, const_iterator last) noexcept
 	: _data(&*first)
-	, _len(last - first)
+	, _len((assert(first <= last), static_cast<size_type>(last - first)))
 	{
 	}
 	
@@ -170,7 +170,7 @@ public:
 	/// Returns an iterator to the beginning
 	constexpr const_iterator cbegin() const noexcept { return {*this}; }
 	/// Returns an iterator to the end
-	constexpr const_iterator cend() const noexcept { return const_iterator{*this} + size(); }
+	constexpr const_iterator cend() const noexcept { return const_iterator{*this, size()}; }
 	
 	/// Returns a reverse iterator to the beginning
 	const_reverse_iterator rbegin() const noexcept { return crbegin(); }
@@ -375,7 +375,7 @@ public:
 	/// Reverse search for the start of the given substring, beginning the search at `pos`.
 	size_type rfind(basic_string_view str, size_type pos = npos) const
 	{
-		return forwardIterOffset(std::find_end(begin(), pos == npos ? end() : begin(pos), str.begin(), str.end(), Traits::eq));
+		return forwardIterOffset(std::find_end(begin(), begin(pos), str.begin(), str.end(), Traits::eq));
 	}
 	/// Equivalent to 'rfind(basic_string_view{str}, pos)'.
 	size_type rfind(const CharT* str, size_type pos = npos) const
@@ -390,7 +390,7 @@ public:
 	/// Equivalent to 'rfind(basic_string_view{&ch, 1}, pos)'.
 	size_type rfind(CharT ch, size_type pos = npos) const
 	{
-		return reverseIterOffset(std::find_if(rbegin(), rend(), [ch] (CharT x) { return Traits::eq(x, ch); }));
+		return reverseIterOffset(std::find_if(rbegin(pos), rend(), [ch] (CharT x) { return Traits::eq(x, ch); }));
 	}
 	
 	/// Forward search for the occurence of a character in the given set, beginning the search at `pos`.
