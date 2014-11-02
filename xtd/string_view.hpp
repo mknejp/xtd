@@ -60,6 +60,8 @@ public:
 	template<class Traits>
 	constexpr string_view_iterator(basic_string_view<CharT, Traits> str, std::size_t offset = 0) noexcept : _p(str.data() + offset) { }
 	
+	constexpr const CharT* data() const noexcept { return _p; }
+	
 	constexpr reference operator*() const noexcept { return *_p; }
 	constexpr pointer operator->() const noexcept { return _p; }
 	
@@ -152,8 +154,8 @@ public:
 	}
 	/// Construct from a range of iterators
 	constexpr basic_string_view(const_iterator first, const_iterator last) noexcept
-	: _data(&*first)
-	, _len((assert(first <= last), static_cast<size_type>(last - first)))
+	: _data(first.data())
+	, _len((assert(first.data() <= last.data()), static_cast<size_type>(last - first)))
 	{
 	}
 	
